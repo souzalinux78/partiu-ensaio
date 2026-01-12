@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import api, { getBaseUrl } from '../utils/api';
 import { getAuthToken, getUser } from '../utils/auth';
 import './Dashboard.css';
 
@@ -259,7 +259,7 @@ const EnsaiosPublicos = () => {
                     {ensaio.foto_local && (
                       <div className="ensaio-image">
                         <img
-                          src={`http://localhost:5000${ensaio.foto_local}`}
+                          src={`${getBaseUrl()}${ensaio.foto_local}`}
                           alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
                           onError={(e) => {
                             e.target.style.display = 'none';

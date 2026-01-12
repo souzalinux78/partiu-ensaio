@@ -1,6 +1,30 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+// Função para obter URL base da API
+const getApiUrl = () => {
+  // Se estiver em produção e tiver variável de ambiente, usar ela
+  if (process.env.REACT_APP_API_URL) {
+    return process.env.REACT_APP_API_URL;
+  }
+  // Se estiver em localhost, usar localhost
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000/api';
+  }
+  // Em produção, usar URL relativa (mesmo domínio)
+  return '/api';
+};
+
+// Função para obter URL base para imagens/arquivos estáticos
+export const getBaseUrl = () => {
+  // Se estiver em localhost, usar localhost:5000
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000';
+  }
+  // Em produção, usar URL relativa (mesmo domínio)
+  return '';
+};
+
+const API_URL = getApiUrl();
 
 const api = axios.create({
   baseURL: API_URL,
