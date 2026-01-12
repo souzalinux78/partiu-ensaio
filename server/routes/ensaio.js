@@ -1,0 +1,587 @@
+const express = require('express');
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs');
+const axios = require('axios');
+const { getDb } = require('../database');
+const { authenticate, requireAdmin, requireEncarregado } = require('../middleware/auth');
+const { calcularProximaData, estaDentroDe7Dias, deveAparecer, calcularOcorrenciasFuturas } = require('../utils/dateCalculator');
+
+const WEBHOOK_URL = 'https://webhook.automatizeonline.com.br/webhook/cadastro-ensaio';
+
+const router = express.Router();
+
+// Função auxiliar para verificar se a coluna 'local' existe
+const checkLocalColumn = (db) => {
+  return new Promise((resolve) => {
+    db.all("PRAGMA table_info(ensaios)", (err, columns) => {
+      if (err) {
+        resolve(false);
+        return;
+      }
+      const columnNames = columns.map(col => col.name.toLowerCase());
+      resolve(columnNames.includes('local'));
+    });
+  });
+};
+
+// Configurar multer para upload de imagens
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    const uploadDir = path.join(__dirname, '../uploads');
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    cb(null, 'ensaio-' + uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    
+    if (mimetype && extname) {
+      return cb(null, true);
+    } else {
+      cb(new Error('Apenas imagens são permitidas (jpeg, jpg, png, gif)'));
+    }
+  }
+});
+
+// Criar novo ensaio (apenas encarregados)
+router.post('/', authenticate, requireEncarregado, upload.single('foto'), async (req, res) => {
+  try {
+    const { nome_encarregado, tipo, celular, dia_semana, semana_mes, horario, nome_igreja, endereco, cidade, estado, instrumento, categoria_instrumento } = req.body;
+    const db = getDb();
+
+    console.log('Dados recebidos:', { nome_encarregado, tipo, celular, dia_semana, semana_mes, horario, nome_igreja, endereco, cidade, estado, instrumento, categoria_instrumento });
+    
+    // Calcular próxima data do ensaio
+    const proxima_data = calcularProximaData(dia_semana, semana_mes ? parseInt(semana_mes) : null);
+
+    if (!nome_encarregado || !tipo || !celular || !horario || !nome_igreja || !endereco) {
+      return res.status(400).json({ error: 'Todos os campos obrigatórios devem ser preenchidos' });
+    }
+
+    if (!['local', 'regional'].includes(tipo.toLowerCase())) {
+      return res.status(400).json({ error: 'Tipo deve ser "local" ou "regional"' });
+    }
+
+    const foto_local = req.file ? `/uploads/${req.file.filename}` : null;
+    const foto_url = req.file ? `${req.protocol}://${req.get('host')}${foto_local}` : null;
+
+    // Verificar se a coluna 'local' existe (compatibilidade com banco antigo)
+    checkLocalColumn(db).then((hasLocalColumn) => {
+      let insertQuery, insertValues;
+      
+      const semanaMesNum = semana_mes ? parseInt(semana_mes) : null;
+      
+      if (hasLocalColumn) {
+        // Se a coluna 'local' existir, incluir ela na inserção (compatibilidade)
+        insertQuery = 'INSERT INTO ensaios (user_id, nome_encarregado, tipo, celular, dia_semana, semana_mes, proxima_data, horario, nome_igreja, endereco, cidade, estado, instrumento, categoria_instrumento, local, foto_local, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        insertValues = [req.user.id, nome_encarregado, tipo.toLowerCase(), celular, dia_semana || null, semanaMesNum, proxima_data, horario, nome_igreja, endereco, cidade || null, estado || null, instrumento || null, categoria_instrumento || null, nome_igreja, foto_local, 'pendente'];
+      } else {
+        // Se não tiver a coluna 'local', usar a query normal
+        insertQuery = 'INSERT INTO ensaios (user_id, nome_encarregado, tipo, celular, dia_semana, semana_mes, proxima_data, horario, nome_igreja, endereco, cidade, estado, instrumento, categoria_instrumento, foto_local, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        insertValues = [req.user.id, nome_encarregado, tipo.toLowerCase(), celular, dia_semana || null, semanaMesNum, proxima_data, horario, nome_igreja, endereco, cidade || null, estado || null, instrumento || null, categoria_instrumento || null, foto_local, 'pendente'];
+      }
+
+      db.run(insertQuery, insertValues, async function(err) {
+        if (err) {
+          console.error('Erro ao inserir ensaio no banco:', err);
+          return res.status(500).json({ error: 'Erro ao criar ensaio: ' + err.message });
+        }
+
+        db.get('SELECT * FROM ensaios WHERE id = ?', [this.lastID], async (err, ensaio) => {
+          if (err) {
+            console.error('Erro ao buscar ensaio criado:', err);
+            return res.status(500).json({ error: 'Erro ao buscar ensaio criado: ' + err.message });
+          }
+
+          // Preparar dados para o webhook
+          const webhookData = {
+            tipo: 'cadastro_ensaio',
+            id: ensaio.id,
+            nome_encarregado: ensaio.nome_encarregado,
+            tipo_ensaio: ensaio.tipo,
+            celular: ensaio.celular,
+            instrumento: ensaio.instrumento || null,
+            categoria_instrumento: ensaio.categoria_instrumento || null,
+            dia_semana: ensaio.dia_semana || null,
+            semana_mes: ensaio.semana_mes || null,
+            proxima_data: ensaio.proxima_data || null,
+            horario: ensaio.horario,
+            nome_igreja: ensaio.nome_igreja,
+            endereco: ensaio.endereco,
+            cidade: ensaio.cidade || null,
+            estado: ensaio.estado || null,
+            foto_url: foto_url,
+            status: ensaio.status,
+            user_id: ensaio.user_id,
+            created_at: ensaio.created_at
+          };
+
+          // Enviar dados para o webhook - AGUARDAR antes de retornar resposta
+          let webhookEnviado = false;
+          
+          // Tentar POST primeiro
+          try {
+            console.log('=== ENVIANDO WEBHOOK - CADASTRO ENSAIO ===');
+            console.log('URL:', WEBHOOK_URL);
+            console.log('Dados:', JSON.stringify(webhookData, null, 2));
+            console.log('Tentando requisição POST...');
+            
+            const response = await axios.post(WEBHOOK_URL, webhookData, {
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              timeout: 15000
+            });
+            
+            console.log('✅ Webhook enviado com SUCESSO via POST!');
+            console.log('Status:', response.status);
+            console.log('Resposta:', JSON.stringify(response.data, null, 2));
+            webhookEnviado = true;
+          } catch (webhookError) {
+            console.error('❌ ERRO ao enviar webhook via POST:');
+            console.error('Mensagem:', webhookError.message);
+            if (webhookError.response) {
+              console.error('Status:', webhookError.response.status);
+              console.error('Resposta:', JSON.stringify(webhookError.response.data, null, 2));
+              
+              // Se o erro for 404 e mencionar GET, tentar GET como fallback
+              if (webhookError.response.status === 404 && 
+                  webhookError.response.data?.message?.includes('GET')) {
+                console.log('⚠️ Webhook não aceita POST, tentando GET como fallback...');
+                
+                try {
+                  const params = new URLSearchParams();
+                  Object.keys(webhookData).forEach(key => {
+                    if (webhookData[key] !== null && webhookData[key] !== undefined) {
+                      params.append(key, typeof webhookData[key] === 'object' 
+                        ? JSON.stringify(webhookData[key]) 
+                        : String(webhookData[key]));
+                    }
+                  });
+                  
+                  const getUrl = `${WEBHOOK_URL}?${params.toString()}`;
+                  console.log('Tentando requisição GET com query params...');
+                  
+                  const getResponse = await axios.get(getUrl, { timeout: 15000 });
+                  
+                  console.log('✅ Webhook enviado com SUCESSO via GET!');
+                  console.log('Status:', getResponse.status);
+                  console.log('Resposta:', JSON.stringify(getResponse.data, null, 2));
+                  webhookEnviado = true;
+                } catch (getError) {
+                  console.error('❌ ERRO ao enviar webhook via GET:', getError.message);
+                }
+              }
+            }
+            if (webhookError.request && !webhookEnviado) {
+              console.error('Request config:', {
+                url: webhookError.config?.url,
+                method: webhookError.config?.method,
+                data: webhookError.config?.data
+              });
+            }
+          }
+
+          res.status(201).json(ensaio);
+        });
+      });
+    }).catch((err) => {
+      console.error('Erro ao verificar coluna local:', err);
+      return res.status(500).json({ error: 'Erro ao verificar estrutura do banco: ' + err.message });
+    });
+  } catch (error) {
+    console.error('Erro geral ao criar ensaio:', error);
+    res.status(500).json({ error: 'Erro interno do servidor: ' + error.message });
+  }
+});
+
+// Listar todos os ensaios (público - apenas aprovados, recorrentes, considerando horário de 20h)
+router.get('/public', (req, res) => {
+  const db = getDb();
+  
+  db.all(
+    'SELECT e.id, e.nome_encarregado, e.tipo, e.dia_semana, e.semana_mes, e.proxima_data, e.horario, e.nome_igreja, e.endereco, e.foto_local, e.status, e.instrumento, e.categoria_instrumento, e.cidade, e.estado, e.created_at, e.user_id, u.name as encarregado_name FROM ensaios e JOIN users u ON e.user_id = u.id WHERE e.status = ? ORDER BY e.proxima_data ASC, e.created_at DESC',
+    ['aprovado'],
+    (err, ensaios) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao buscar ensaios' });
+      }
+      
+      // Expandir ensaios recorrentes em múltiplas ocorrências futuras
+      const ensaiosExpandidos = [];
+      const chavesUnicas = new Set(); // Para evitar duplicatas
+      
+      const agora = new Date();
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const hojeStr = hoje.toISOString().split('T')[0];
+      const horaAtual = agora.getHours();
+      
+      console.log('=== PROCESSANDO ENSAIOS PÚBLICOS ===');
+      console.log('Data de hoje:', hojeStr);
+      console.log('Hora atual:', horaAtual);
+      console.log('Total de ensaios aprovados:', ensaios.length);
+      
+      ensaios.forEach(ensaio => {
+        console.log(`\nEnsaio ID ${ensaio.id}:`, {
+          dia_semana: ensaio.dia_semana,
+          semana_mes: ensaio.semana_mes,
+          proxima_data: ensaio.proxima_data,
+          status: ensaio.status
+        });
+        
+        if (ensaio.dia_semana && ensaio.semana_mes !== null && ensaio.semana_mes !== undefined) {
+          // Ensaio recorrente: calcular ocorrências futuras apenas para os próximos 7 dias
+          const ocorrencias = calcularOcorrenciasFuturas(ensaio.dia_semana, ensaio.semana_mes, 12, 7);
+          console.log(`  Ocorrências calculadas:`, ocorrencias);
+          
+          ocorrencias.forEach((dataOcorrencia, index) => {
+            // Criar chave única para evitar duplicatas: id_original + data
+            const chaveUnica = `${ensaio.id}_${dataOcorrencia}`;
+            
+            // Verificar se já existe esta combinação
+            if (chavesUnicas.has(chaveUnica)) {
+              return; // Pular se já existe
+            }
+            
+            chavesUnicas.add(chaveUnica);
+            
+            // Criar uma cópia do ensaio para cada ocorrência
+            const ensaioOcorrencia = {
+              ...ensaio,
+              id: `${ensaio.id}_${index}`, // ID único para cada ocorrência
+              id_original: ensaio.id, // Manter referência ao ID original
+              proxima_data: dataOcorrencia
+            };
+            
+            // Verificar se deve aparecer (considerando horário de 20h e limite de 7 dias)
+            const deveAparecerResult = deveAparecer(dataOcorrencia, ensaio.horario, 7);
+            console.log(`  Data ${dataOcorrencia}: deveAparecer = ${deveAparecerResult}`);
+            
+            if (deveAparecerResult) {
+              ensaiosExpandidos.push(ensaioOcorrencia);
+            }
+          });
+        } else {
+          // Ensaio não recorrente: usar data única
+          if (ensaio.proxima_data) {
+            const chaveUnica = `${ensaio.id}_${ensaio.proxima_data}`;
+            
+            // Verificar se já existe esta combinação
+            if (!chavesUnicas.has(chaveUnica)) {
+              chavesUnicas.add(chaveUnica);
+              
+              const deveAparecerResult = deveAparecer(ensaio.proxima_data, ensaio.horario, 7);
+              console.log(`  Ensaio não recorrente - Data ${ensaio.proxima_data}: deveAparecer = ${deveAparecerResult}`);
+              
+              if (deveAparecerResult) {
+                ensaiosExpandidos.push(ensaio);
+              }
+            }
+          } else {
+            console.log(`  Ensaio não recorrente sem proxima_data`);
+          }
+        }
+      });
+      
+      console.log(`\nTotal de ensaios expandidos: ${ensaiosExpandidos.length}`);
+      
+      // Ordenar por data
+      ensaiosExpandidos.sort((a, b) => {
+        if (!a.proxima_data) return 1;
+        if (!b.proxima_data) return -1;
+        return new Date(a.proxima_data) - new Date(b.proxima_data);
+      });
+      
+      // Remover campos sensíveis (celular e email) antes de enviar
+      const ensaiosSeguros = ensaiosExpandidos.map(ensaio => {
+        const { celular, ...ensaioSemCelular } = ensaio;
+        return ensaioSemCelular;
+      });
+      
+      res.json(ensaiosSeguros);
+    }
+  );
+});
+
+// Listar ensaios do usuário logado (encarregado)
+router.get('/meus', authenticate, requireEncarregado, (req, res) => {
+  const db = getDb();
+  
+  db.all(
+    'SELECT * FROM ensaios WHERE user_id = ? ORDER BY created_at DESC',
+    [req.user.id],
+    (err, ensaios) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao buscar ensaios' });
+      }
+      res.json(ensaios);
+    }
+  );
+});
+
+// Listar todos os ensaios pendentes (admin)
+router.get('/pendentes', authenticate, requireAdmin, (req, res) => {
+  const db = getDb();
+  
+  db.all(
+    'SELECT e.*, u.name as encarregado_name, u.email as encarregado_email FROM ensaios e JOIN users u ON e.user_id = u.id WHERE e.status = ? ORDER BY e.created_at DESC',
+    ['pendente'],
+    (err, ensaios) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao buscar ensaios pendentes' });
+      }
+      res.json(ensaios);
+    }
+  );
+});
+
+// Listar todos os ensaios (admin - dashboard completo)
+router.get('/todos', authenticate, requireAdmin, (req, res) => {
+  const db = getDb();
+  
+  db.all(
+    'SELECT e.*, u.name as encarregado_name, u.email as encarregado_email FROM ensaios e JOIN users u ON e.user_id = u.id ORDER BY e.created_at DESC',
+    [],
+    (err, ensaios) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao buscar ensaios' });
+      }
+      res.json(ensaios);
+    }
+  );
+});
+
+// Estatísticas de igrejas por localidade e estado (admin)
+router.get('/estatisticas', authenticate, requireAdmin, (req, res) => {
+  const db = getDb();
+  
+  // Estatísticas por cidade
+  db.all(
+    `SELECT cidade, COUNT(*) as total, 
+     ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ensaios WHERE cidade IS NOT NULL AND cidade != ''), 2) as porcentagem
+     FROM ensaios 
+     WHERE cidade IS NOT NULL AND cidade != '' 
+     GROUP BY cidade 
+     ORDER BY total DESC`,
+    [],
+    (err, porCidade) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao buscar estatísticas por cidade' });
+      }
+      
+      // Estatísticas por estado
+      db.all(
+        `SELECT estado, COUNT(*) as total, 
+         ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ensaios WHERE estado IS NOT NULL AND estado != ''), 2) as porcentagem
+         FROM ensaios 
+         WHERE estado IS NOT NULL AND estado != '' 
+         GROUP BY estado 
+         ORDER BY total DESC`,
+        [],
+        (err, porEstado) => {
+          if (err) {
+            return res.status(500).json({ error: 'Erro ao buscar estatísticas por estado' });
+          }
+          
+          // Estatísticas por categoria de instrumento (naipes)
+          db.all(
+            `SELECT categoria_instrumento as naipe, COUNT(*) as total,
+             ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ensaios WHERE categoria_instrumento IS NOT NULL AND categoria_instrumento != ''), 2) as porcentagem
+             FROM ensaios 
+             WHERE categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
+             GROUP BY categoria_instrumento 
+             ORDER BY total DESC`,
+            [],
+            (err, porNaipe) => {
+              if (err) {
+                return res.status(500).json({ error: 'Erro ao buscar estatísticas por naipes' });
+              }
+              
+              // Estatísticas por instrumento específico
+              db.all(
+                `SELECT instrumento, categoria_instrumento, COUNT(*) as total,
+                 ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ensaios WHERE instrumento IS NOT NULL AND instrumento != ''), 2) as porcentagem
+                 FROM ensaios 
+                 WHERE instrumento IS NOT NULL AND instrumento != ''
+                 GROUP BY instrumento, categoria_instrumento
+                 ORDER BY total DESC`,
+                [],
+                (err, porInstrumento) => {
+                  if (err) {
+                    return res.status(500).json({ error: 'Erro ao buscar estatísticas por instrumentos' });
+                  }
+                  
+                  res.json({
+                    porCidade: porCidade || [],
+                    porEstado: porEstado || [],
+                    porNaipe: porNaipe || [],
+                    porInstrumento: porInstrumento || []
+                  });
+                }
+              );
+            }
+          );
+        }
+      );
+    }
+  );
+});
+
+// Cancelar ensaio (mudar status para cancelado)
+router.patch('/:id/cancelar', authenticate, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const db = getDb();
+
+  db.run(
+    'UPDATE ensaios SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    ['cancelado', id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao cancelar ensaio' });
+      }
+
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Ensaio não encontrado' });
+      }
+
+      res.json({ message: 'Ensaio cancelado com sucesso' });
+    }
+  );
+});
+
+// Aprovar ou rejeitar ensaio (admin)
+router.patch('/:id/status', authenticate, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const db = getDb();
+
+  if (!status || !['aprovado', 'rejeitado'].includes(status)) {
+    return res.status(400).json({ error: 'Status deve ser "aprovado" ou "rejeitado"' });
+  }
+
+  db.run(
+    'UPDATE ensaios SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?',
+    [status, id],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao atualizar status' });
+      }
+
+      if (this.changes === 0) {
+        return res.status(404).json({ error: 'Ensaio não encontrado' });
+      }
+
+      db.get('SELECT * FROM ensaios WHERE id = ?', [id], (err, ensaio) => {
+        if (err) {
+          return res.status(500).json({ error: 'Erro ao buscar ensaio atualizado' });
+        }
+        res.json(ensaio);
+      });
+    }
+  );
+});
+
+// Atualizar ensaio (apenas o dono)
+router.put('/:id', authenticate, requireEncarregado, upload.single('foto'), (req, res) => {
+  const { id } = req.params;
+    const { nome_encarregado, tipo, celular, dia_semana, semana_mes, horario, nome_igreja, endereco, cidade, estado, instrumento, categoria_instrumento } = req.body;
+    const db = getDb();
+
+    // Verificar se o ensaio pertence ao usuário
+    db.get('SELECT * FROM ensaios WHERE id = ?', [id], (err, ensaio) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao buscar ensaio' });
+      }
+
+      if (!ensaio) {
+        return res.status(404).json({ error: 'Ensaio não encontrado' });
+      }
+
+      if (ensaio.user_id !== req.user.id && req.user.role !== 'admin') {
+        return res.status(403).json({ error: 'Você não tem permissão para editar este ensaio' });
+      }
+
+      const foto_local = req.file ? `/uploads/${req.file.filename}` : ensaio.foto_local;
+      const semanaMesNum = semana_mes ? parseInt(semana_mes) : null;
+      const proxima_data = calcularProximaData(dia_semana, semanaMesNum);
+
+      // Verificar se a coluna 'local' existe (compatibilidade com banco antigo)
+      checkLocalColumn(db).then((hasLocalColumn) => {
+        let updateQuery, updateValues;
+        
+        if (hasLocalColumn) {
+          // Se a coluna 'local' existir, incluir ela na atualização
+          updateQuery = 'UPDATE ensaios SET nome_encarregado = ?, tipo = ?, celular = ?, dia_semana = ?, semana_mes = ?, proxima_data = ?, horario = ?, nome_igreja = ?, endereco = ?, cidade = ?, estado = ?, instrumento = ?, categoria_instrumento = ?, local = ?, foto_local = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+          updateValues = [nome_encarregado, tipo, celular, dia_semana || null, semanaMesNum, proxima_data, horario, nome_igreja, endereco, cidade || null, estado || null, instrumento || null, categoria_instrumento || null, nome_igreja, foto_local, 'pendente', id];
+        } else {
+          // Se não tiver a coluna 'local', usar a query normal
+          updateQuery = 'UPDATE ensaios SET nome_encarregado = ?, tipo = ?, celular = ?, dia_semana = ?, semana_mes = ?, proxima_data = ?, horario = ?, nome_igreja = ?, endereco = ?, cidade = ?, estado = ?, instrumento = ?, categoria_instrumento = ?, foto_local = ?, status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?';
+          updateValues = [nome_encarregado, tipo, celular, dia_semana || null, semanaMesNum, proxima_data, horario, nome_igreja, endereco, cidade || null, estado || null, instrumento || null, categoria_instrumento || null, foto_local, 'pendente', id];
+        }
+
+        db.run(updateQuery, updateValues, function(err) {
+          if (err) {
+            return res.status(500).json({ error: 'Erro ao atualizar ensaio: ' + err.message });
+          }
+
+          db.get('SELECT * FROM ensaios WHERE id = ?', [id], (err, updatedEnsaio) => {
+            if (err) {
+              return res.status(500).json({ error: 'Erro ao buscar ensaio atualizado' });
+            }
+            res.json(updatedEnsaio);
+          });
+        });
+      });
+    });
+});
+
+// Deletar ensaio (apenas o dono ou admin)
+router.delete('/:id', authenticate, requireEncarregado, (req, res) => {
+  const { id } = req.params;
+  const db = getDb();
+
+  db.get('SELECT * FROM ensaios WHERE id = ?', [id], (err, ensaio) => {
+    if (err) {
+      return res.status(500).json({ error: 'Erro ao buscar ensaio' });
+    }
+
+    if (!ensaio) {
+      return res.status(404).json({ error: 'Ensaio não encontrado' });
+    }
+
+    if (ensaio.user_id !== req.user.id && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Você não tem permissão para deletar este ensaio' });
+    }
+
+    // Deletar foto se existir
+    if (ensaio.foto_local) {
+      const fotoPath = path.join(__dirname, '..', ensaio.foto_local);
+      if (fs.existsSync(fotoPath)) {
+        fs.unlinkSync(fotoPath);
+      }
+    }
+
+    db.run('DELETE FROM ensaios WHERE id = ?', [id], (err) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erro ao deletar ensaio' });
+      }
+      res.json({ message: 'Ensaio deletado com sucesso' });
+    });
+  });
+});
+
+module.exports = router;

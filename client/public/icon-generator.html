@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Gerador de Ícones PWA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin: 10px;
+        }
+        .instructions {
+            background: #f0f0f0;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Gerador de Ícones PWA - Partiu Ensaio</h1>
+    <div class="instructions">
+        <p><strong>Instruções:</strong></p>
+        <ol>
+            <li>Este arquivo gera ícones básicos para o PWA</li>
+            <li>Para ícones profissionais, use ferramentas como:
+                <ul>
+                    <li><a href="https://realfavicongenerator.net/" target="_blank">RealFaviconGenerator</a></li>
+                    <li><a href="https://www.pwabuilder.com/imageGenerator" target="_blank">PWA Builder Image Generator</a></li>
+                    <li><a href="https://favicon.io/" target="_blank">Favicon.io</a></li>
+                </ul>
+            </li>
+            <li>Os ícones devem ter fundo transparente ou sólido</li>
+            <li>Recomendado: 512x512px para melhor qualidade</li>
+        </ol>
+    </div>
+    
+    <canvas id="icon192" width="192" height="192"></canvas>
+    <canvas id="icon512" width="512" height="512"></canvas>
+    
+    <div>
+        <button onclick="generateIcons()">Gerar Ícones</button>
+        <button onclick="downloadIcon('icon192', 'icon-192x192.png')">Download 192x192</button>
+        <button onclick="downloadIcon('icon512', 'icon-512x512.png')">Download 512x512</button>
+    </div>
+
+    <script>
+        function generateIcons() {
+            // Ícone 192x192
+            const canvas192 = document.getElementById('icon192');
+            const ctx192 = canvas192.getContext('2d');
+            
+            // Gradiente de fundo
+            const gradient192 = ctx192.createLinearGradient(0, 0, 192, 192);
+            gradient192.addColorStop(0, '#667eea');
+            gradient192.addColorStop(1, '#764ba2');
+            ctx192.fillStyle = gradient192;
+            ctx192.fillRect(0, 0, 192, 192);
+            
+            // Texto
+            ctx192.fillStyle = 'white';
+            ctx192.font = 'bold 60px Arial';
+            ctx192.textAlign = 'center';
+            ctx192.textBaseline = 'middle';
+            ctx192.fillText('PE', 96, 96);
+            
+            // Ícone 512x512
+            const canvas512 = document.getElementById('icon512');
+            const ctx512 = canvas512.getContext('2d');
+            
+            // Gradiente de fundo
+            const gradient512 = ctx512.createLinearGradient(0, 0, 512, 512);
+            gradient512.addColorStop(0, '#667eea');
+            gradient512.addColorStop(1, '#764ba2');
+            ctx512.fillStyle = gradient512;
+            ctx512.fillRect(0, 0, 512, 512);
+            
+            // Texto
+            ctx512.fillStyle = 'white';
+            ctx512.font = 'bold 160px Arial';
+            ctx512.textAlign = 'center';
+            ctx512.textBaseline = 'middle';
+            ctx512.fillText('PE', 256, 256);
+        }
+        
+        function downloadIcon(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        }
+        
+        // Gerar automaticamente ao carregar
+        window.onload = generateIcons;
+    </script>
+</body>
+</html>
