@@ -294,171 +294,103 @@ router.post('/register-musico', async (req, res) => {
       }
 
       // Músicos começam com aprovado = 0 (pendente)
-      // Verificar se as colunas existem antes de inserir
-      console.log('✅ Hash criado, verificando estrutura do banco...');
-      db.all("PRAGMA table_info(users)", async (err, columns) => {
+      // MySQL já tem todas as colunas no schema, não precisa verificar
+      console.log('✅ Hash criado, preparando INSERT...');
+      
+      // MySQL tem todas as colunas, usar INSERT completo
+      const insertQuery = 'INSERT INTO users (email, password, name, role, aprovado, instrumento, categoria_instrumento, celular, cidade, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+      const insertValues = [
+        email, 
+        hash, 
+        name, 
+        'musico', 
+        0,
+        instrumento || null,
+        categoria_instrumento || null,
+        celular || null,
+        cidade || null,
+        estado || null
+      ];
+      
+      db.run(insertQuery, insertValues, async function(err) {
         if (err) {
-          console.error('❌ Erro ao verificar estrutura do banco:', err);
-          return res.status(500).json({ error: 'Erro ao verificar estrutura do banco' });
+          console.error('❌ Erro ao inserir usuário músico:', err);
+          return res.status(500).json({ error: 'Erro ao criar usuário: ' + err.message });
         }
         
-        console.log('✅ Estrutura do banco verificada, preparando INSERT...');
-        
-        const existingColumns = columns.map(col => col.name.toLowerCase());
-        const hasInstrumento = existingColumns.includes('instrumento');
-        const hasCelular = existingColumns.includes('celular');
-        const hasCidade = existingColumns.includes('cidade');
-        const hasEstado = existingColumns.includes('estado');
-        const hasCategoria = existingColumns.includes('categoria_instrumento');
-        
-        // Construir query dinamicamente baseado nas colunas disponíveis
-        let insertQuery = 'INSERT INTO users (email, password, name, role, aprovado';
-        let insertValues = [email, hash, name, 'musico', 0];
-        let placeholders = '?, ?, ?, ?, ?';
-        
-        if (hasInstrumento) {
-          insertQuery += ', instrumento';
-          insertValues.push(instrumento || null);
-          placeholders += ', ?';
-        }
-        if (hasCategoria) {
-          insertQuery += ', categoria_instrumento';
-          insertValues.push(categoria_instrumento || null);
-          placeholders += ', ?';
-        }
-        if (hasCelular) {
-          insertQuery += ', celular';
-          insertValues.push(celular || null);
-          placeholders += ', ?';
-        }
-        if (hasCidade) {
-          insertQuery += ', cidade';
-          insertValues.push(cidade || null);
-          placeholders += ', ?';
-        }
-        if (hasEstado) {
-          insertQuery += ', estado';
-          insertValues.push(estado || null);
-          placeholders += ', ?';
-        }
-        
-        insertQuery += `) VALUES (${placeholders})`;
-        
-        db.run(insertQuery, insertValues, async function(err) {
+        // Buscar usuário criado
+        db.get('SELECT id, email, name, role, aprovado, instrumento, categoria_instrumento, celular, cidade, estado FROM users WHERE id = ?', [this.lastID], async (err, newUser) => {
           if (err) {
-            console.error('Erro ao criar usuário:', err);
-            return res.status(500).json({ error: 'Erro ao criar usuário: ' + err.message });
+            console.error('❌ Erro ao buscar usuário criado:', err);
+            return res.status(500).json({ error: 'Erro ao buscar usuário criado' });
           }
-
-          console.log('✅ Usuário músico criado no banco de dados. ID:', this.lastID);
-          const userId = this.lastID;
-
-          // Preparar dados para o webhook (sempre enviar todos os dados, mesmo que não estejam no banco)
+          
+          // Preparar dados para webhook
           const webhookData = {
             tipo: 'cadastro_musico',
-            id: userId,
-            email: email,
-            name: name,
-            instrumento: instrumento || null,
-            categoria_instrumento: categoria_instrumento || null,
-            celular: celular || null,
-            cidade: cidade || null,
-            estado: estado || null,
+            id: newUser.id,
+            email: newUser.email,
+            name: newUser.name,
+            instrumento: newUser.instrumento,
+            categoria_instrumento: newUser.categoria_instrumento,
+            celular: newUser.celular,
+            cidade: newUser.cidade,
+            estado: newUser.estado,
             role: 'musico',
             aprovado: false,
             created_at: new Date().toISOString()
           };
-
-          // Enviar dados para o webhook - AGUARDAR antes de retornar resposta
-          console.log('=== INICIANDO ENVIO WEBHOOK - CADASTRO MÚSICO ===');
-          console.log('Timestamp:', new Date().toISOString());
           
+          // Enviar webhook
           let webhookEnviado = false;
-          
-          // Tentar POST primeiro
           try {
-            console.log('URL do webhook:', WEBHOOK_URL);
-            console.log('Dados a enviar:', JSON.stringify(webhookData, null, 2));
-            console.log('Tentando requisição POST...');
+            console.log('=== INICIANDO ENVIO WEBHOOK - CADASTRO MÚSICO ===');
+            console.log('URL:', WEBHOOK_URL);
+            console.log('Dados:', JSON.stringify(webhookData, null, 2));
             
             const response = await axios.post(WEBHOOK_URL, webhookData, {
-              headers: {
-                'Content-Type': 'application/json'
-              },
-              timeout: 15000 // 15 segundos de timeout
+              headers: { 'Content-Type': 'application/json' },
+              timeout: 15000
             });
             
             console.log('✅ Webhook enviado com SUCESSO via POST!');
-            console.log('Status:', response.status);
-            console.log('Resposta:', JSON.stringify(response.data, null, 2));
             webhookEnviado = true;
           } catch (webhookError) {
-            console.error('❌ ERRO ao enviar webhook via POST:');
-            console.error('Mensagem:', webhookError.message);
-            if (webhookError.response) {
-              console.error('Status:', webhookError.response.status);
-              console.error('Resposta:', JSON.stringify(webhookError.response.data, null, 2));
-              
-              // Se o erro for 404 e mencionar GET, tentar GET como fallback
-              if (webhookError.response.status === 404 && 
-                  webhookError.response.data?.message?.includes('GET')) {
-                console.log('⚠️ Webhook não aceita POST, tentando GET como fallback...');
-                
-                try {
-                  // Enviar dados via query string no GET
-                  const params = new URLSearchParams();
-                  Object.keys(webhookData).forEach(key => {
-                    if (webhookData[key] !== null && webhookData[key] !== undefined) {
-                      params.append(key, typeof webhookData[key] === 'object' 
-                        ? JSON.stringify(webhookData[key]) 
-                        : String(webhookData[key]));
-                    }
-                  });
-                  
-                  const getUrl = `${WEBHOOK_URL}?${params.toString()}`;
-                  console.log('Tentando requisição GET com query params...');
-                  
-                  const getResponse = await axios.get(getUrl, {
-                    timeout: 15000
-                  });
-                  
-                  console.log('✅ Webhook enviado com SUCESSO via GET!');
-                  console.log('Status:', getResponse.status);
-                  console.log('Resposta:', JSON.stringify(getResponse.data, null, 2));
-                  webhookEnviado = true;
-                } catch (getError) {
-                  console.error('❌ ERRO ao enviar webhook via GET:');
-                  console.error('Mensagem:', getError.message);
-                  if (getError.response) {
-                    console.error('Status:', getError.response.status);
-                    console.error('Resposta:', JSON.stringify(getError.response.data, null, 2));
+            console.error('❌ ERRO ao enviar webhook via POST:', webhookError.message);
+            
+            if (webhookError.response?.status === 404 && 
+                webhookError.response?.data?.message?.includes('GET')) {
+              try {
+                const params = new URLSearchParams();
+                Object.keys(webhookData).forEach(key => {
+                  if (webhookData[key] !== null && webhookData[key] !== undefined) {
+                    params.append(key, typeof webhookData[key] === 'object' 
+                      ? JSON.stringify(webhookData[key]) 
+                      : String(webhookData[key]));
                   }
-                }
+                });
+                
+                const getUrl = `${WEBHOOK_URL}?${params.toString()}`;
+                const getResponse = await axios.get(getUrl, { timeout: 15000 });
+                console.log('✅ Webhook enviado com SUCESSO via GET!');
+                webhookEnviado = true;
+              } catch (getError) {
+                console.error('❌ ERRO ao enviar webhook via GET:', getError.message);
               }
             }
-            if (webhookError.request && !webhookEnviado) {
-              console.error('Request config:', {
-                url: webhookError.config?.url,
-                method: webhookError.config?.method,
-                data: webhookError.config?.data
-              });
-            }
-            // Não falhar a requisição se o webhook falhar, apenas logar o erro
           }
-
-          // Retornar resposta após tentar enviar webhook
+          
           res.status(201).json({
             message: 'Cadastro realizado com sucesso! Aguarde a aprovação do administrador para acessar o sistema.',
             user: {
-              id: userId,
-              email,
-              name,
+              id: newUser.id,
+              email: newUser.email,
+              name: newUser.name,
               role: 'musico',
               aprovado: 0
             }
           });
         });
-      });
       });
     }
   });

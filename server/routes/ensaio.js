@@ -11,18 +11,11 @@ const WEBHOOK_URL = 'https://webhook.automatizeonline.com.br/webhook/cadastro-en
 
 const router = express.Router();
 
-// Função auxiliar para verificar se a coluna 'local' existe
+// Função auxiliar para verificar se a coluna 'local' existe (apenas SQLite)
+// MySQL não precisa desta verificação - a coluna 'local' não existe no schema MySQL
 const checkLocalColumn = (db) => {
-  return new Promise((resolve) => {
-    db.all("PRAGMA table_info(ensaios)", (err, columns) => {
-      if (err) {
-        resolve(false);
-        return;
-      }
-      const columnNames = columns.map(col => col.name.toLowerCase());
-      resolve(columnNames.includes('local'));
-    });
-  });
+  // Para MySQL, sempre retorna false (não tem coluna 'local')
+  return Promise.resolve(false);
 };
 
 // Configurar multer para upload de imagens

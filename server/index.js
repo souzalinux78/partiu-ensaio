@@ -1,7 +1,9 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
-const db = require('./database');
+// Escolha o banco de dados: 'database' (SQLite) ou 'database-mysql' (MySQL)
+const db = require('./database-mysql'); // Para MySQL
+// const db = require('./database'); // Para SQLite
 const authRoutes = require('./routes/auth');
 const ensaioRoutes = require('./routes/ensaio');
 const userRoutes = require('./routes/user');
