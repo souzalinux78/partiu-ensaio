@@ -133,7 +133,8 @@ function deveAparecer(dataString, horario, limiteDias = 7) {
   return diffDays > 0 && diffDays <= limiteDias;
 }
 
-// Função para calcular múltiplas ocorrências futuras de um ensaio recorrente (limitado a 7 dias)
+// Função para calcular múltiplas ocorrências futuras de um ensaio recorrente
+// limiteDias = 999 significa sem limite de dias (apenas limite de meses)
 function calcularOcorrenciasFuturas(diaSemana, semanaMes, limiteMeses = 12, limiteDias = 7) {
   if (!diaSemana || semanaMes === undefined || semanaMes === null) {
     return [];
@@ -142,7 +143,6 @@ function calcularOcorrenciasFuturas(diaSemana, semanaMes, limiteMeses = 12, limi
   const ocorrencias = [];
   const ocorrenciasSet = new Set(); // Para evitar datas duplicadas
   const agora = new Date();
-  const horaAtual = agora.getHours();
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   
@@ -166,6 +166,7 @@ function calcularOcorrenciasFuturas(diaSemana, semanaMes, limiteMeses = 12, limi
   }
   
   const semanaMesNum = parseInt(semanaMes);
+  const semLimiteDias = limiteDias >= 999; // Se limiteDias >= 999, não aplicar limite de dias
   
   // Calcular ocorrências para os próximos N meses
   for (let mesOffset = 0; mesOffset < limiteMeses; mesOffset++) {
@@ -220,11 +221,20 @@ function calcularOcorrenciasFuturas(diaSemana, semanaMes, limiteMeses = 12, limi
       continue; // Pular se já existe
     }
     
-    // Verificar se está dentro do limite de dias (0 a limiteDias)
-    // Incluir hoje (diffDays === 0) e futuros dentro do limite
-    if (diffDays >= 0 && diffDays <= limiteDias) {
-      ocorrenciasSet.add(dataStr);
-      ocorrencias.push(dataStr);
+    // Se não tem limite de dias, incluir todas as datas futuras (ou hoje)
+    // Se tem limite de dias, verificar se está dentro do limite
+    if (semLimiteDias) {
+      // Sem limite: incluir todas as datas futuras ou de hoje
+      if (diffDays >= 0) {
+        ocorrenciasSet.add(dataStr);
+        ocorrencias.push(dataStr);
+      }
+    } else {
+      // Com limite: verificar se está dentro do limite de dias (0 a limiteDias)
+      if (diffDays >= 0 && diffDays <= limiteDias) {
+        ocorrenciasSet.add(dataStr);
+        ocorrencias.push(dataStr);
+      }
     }
   }
   

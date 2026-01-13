@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { getBaseUrl } from '../utils/api';
 import { getAuthToken, getUser } from '../utils/auth';
@@ -12,7 +12,10 @@ const EnsaiosPublicos = () => {
   const [interesses, setInteresses] = useState({});
   const [processandoInteresse, setProcessandoInteresse] = useState({});
   const [termoPesquisa, setTermoPesquisa] = useState('');
+  const [mesAtual, setMesAtual] = useState(new Date().getMonth());
+  const [anoAtual, setAnoAtual] = useState(new Date().getFullYear());
   const navigate = useNavigate();
+  const loadEnsaiosRef = useRef(null);
 
   useEffect(() => {
     // Verificar se há usuário logado
@@ -22,6 +25,37 @@ const EnsaiosPublicos = () => {
       setUser(userData);
     }
     loadEnsaios();
+    
+    // Verificar mudança de mês e atualizar ensaios periodicamente
+    const interval = setInterval(() => {
+      const agora = new Date();
+      const mesAtualAgora = agora.getMonth();
+      const anoAtualAgora = agora.getFullYear();
+      
+      // Atualizar estado do mês/ano se mudou
+      setMesAtual(prevMes => {
+        if (mesAtualAgora !== prevMes) {
+          console.log('Mês mudou! Recarregando ensaios...');
+          return mesAtualAgora;
+        }
+        return prevMes;
+      });
+      
+      setAnoAtual(prevAno => {
+        if (anoAtualAgora !== prevAno) {
+          console.log('Ano mudou! Recarregando ensaios...');
+          return anoAtualAgora;
+        }
+        return prevAno;
+      });
+      
+      // Sempre recarregar ensaios para pegar atualizações (ex: passou das 20h, mudou de mês)
+      if (loadEnsaiosRef.current) {
+        loadEnsaiosRef.current();
+      }
+    }, 60000); // Verificar a cada minuto
+    
+    return () => clearInterval(interval);
   }, []);
 
   // Carregar interesses se o usuário for músico
@@ -31,7 +65,7 @@ const EnsaiosPublicos = () => {
     }
   }, [ensaios, user]);
 
-  const loadEnsaios = async () => {
+  const loadEnsaios = React.useCallback(async () => {
     try {
       const response = await api.get('/ensaio/public');
       setEnsaios(response.data);
@@ -41,7 +75,12 @@ const EnsaiosPublicos = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+  
+  // Atualizar referência
+  useEffect(() => {
+    loadEnsaiosRef.current = loadEnsaios;
+  }, [loadEnsaios]);
 
   // Função para filtrar ensaios
   const filtrarEnsaios = (termo, listaEnsaios) => {
@@ -192,12 +231,86 @@ const EnsaiosPublicos = () => {
     }
   };
 
+  // Filtrar e ordenar ensaios do mês atual (ou próximo se todos já passaram)
+  const filtrarEnsaiosDoMes = (listaEnsaios) => {
+    const hoje = new Date();
+    const horaAtual = hoje.getHours();
+    const hojeNormalizado = new Date();
+    hojeNormalizado.setHours(0, 0, 0, 0);
+    
+    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
+    const inicioProximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+    const fimProximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 2, 0, 23, 59, 59);
+    
+    // Separar ensaios do mês atual e próximo mês
+    const ensaiosMesAtual = [];
+    const ensaiosProximoMes = [];
+    
+    listaEnsaios.forEach(ensaio => {
+      if (!ensaio.proxima_data) return;
+      
+      try {
+        const dataEnsaio = new Date(ensaio.proxima_data + 'T00:00:00');
+        if (isNaN(dataEnsaio.getTime())) return;
+        
+        const estaNoMesAtual = dataEnsaio >= inicioMes && dataEnsaio <= fimMes;
+        const estaNoProximoMes = dataEnsaio >= inicioProximoMes && dataEnsaio <= fimProximoMes;
+        
+        if (estaNoMesAtual) {
+          // Verificar se ainda não passou (considerando horário de 20h)
+          const diffDays = Math.floor((dataEnsaio - hojeNormalizado) / (1000 * 60 * 60 * 24));
+          const aindaNaoPassou = diffDays > 0 || (diffDays === 0 && horaAtual <= 20);
+          
+          if (aindaNaoPassou) {
+            ensaiosMesAtual.push(ensaio);
+          }
+        } else if (estaNoProximoMes) {
+          ensaiosProximoMes.push(ensaio);
+        }
+      } catch {
+        // Ignorar erros
+      }
+    });
+    
+    // Se há ensaios futuros no mês atual, retornar esses
+    // Se não há, retornar os do próximo mês
+    return ensaiosMesAtual.length > 0 ? ensaiosMesAtual : ensaiosProximoMes;
+  };
+
+  // Filtrar ensaios do mês atual (ou próximo se todos já passaram)
+  const ensaiosDoMes = filtrarEnsaiosDoMes(ensaiosFiltrados);
+  
   // Ordenar ensaios filtrados por data
-  const ensaiosOrdenados = [...ensaiosFiltrados].sort((a, b) => {
+  const ensaiosOrdenados = [...ensaiosDoMes].sort((a, b) => {
     if (!a.proxima_data) return 1;
     if (!b.proxima_data) return -1;
     return new Date(a.proxima_data) - new Date(b.proxima_data);
   });
+  
+  // Determinar qual mês está sendo exibido
+  const determinarMesExibido = () => {
+    if (ensaiosOrdenados.length === 0) {
+      return new Date(anoAtual, mesAtual, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    }
+    
+    // Pegar a primeira data dos ensaios ordenados
+    const primeiraData = ensaiosOrdenados[0]?.proxima_data;
+    if (primeiraData) {
+      try {
+        const dataObj = new Date(primeiraData + 'T00:00:00');
+        if (!isNaN(dataObj.getTime())) {
+          return dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        }
+      } catch {
+        // Se der erro, usar mês atual
+      }
+    }
+    
+    return new Date(anoAtual, mesAtual, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  };
+  
+  const nomeMesExibido = determinarMesExibido();
 
   return (
     <div className="dashboard">
@@ -219,7 +332,12 @@ const EnsaiosPublicos = () => {
           <div className="page-header">
             <div>
               <h2>Agenda de Ensaios</h2>
-              <p className="subtitle">Ensaios recorrentes - Agenda completa</p>
+              <p className="subtitle">
+                {ensaiosOrdenados.length > 0 
+                  ? `Ensaios de ${nomeMesExibido.charAt(0).toUpperCase() + nomeMesExibido.slice(1)}`
+                  : 'Nenhum ensaio agendado para este período'
+                }
+              </p>
             </div>
           </div>
 

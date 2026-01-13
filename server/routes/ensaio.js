@@ -228,6 +228,21 @@ router.get('/public', (req, res) => {
       console.log('Hora atual:', horaAtual);
       console.log('Total de ensaios aprovados:', ensaios.length);
       
+      // Calcular início e fim do mês atual
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+      const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
+      const inicioProximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+      const fimProximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 2, 0, 23, 59, 59);
+      
+      console.log('Período de busca:', {
+        inicioMes: inicioMes.toISOString().split('T')[0],
+        fimMes: fimMes.toISOString().split('T')[0],
+        inicioProximoMes: inicioProximoMes.toISOString().split('T')[0],
+        fimProximoMes: fimProximoMes.toISOString().split('T')[0]
+      });
+      
       ensaios.forEach(ensaio => {
         console.log(`\nEnsaio ID ${ensaio.id}:`, {
           dia_semana: ensaio.dia_semana,
@@ -237,36 +252,66 @@ router.get('/public', (req, res) => {
         });
         
         if (ensaio.dia_semana && ensaio.semana_mes !== null && ensaio.semana_mes !== undefined) {
-          // Ensaio recorrente: calcular ocorrências futuras apenas para os próximos 7 dias
-          const ocorrencias = calcularOcorrenciasFuturas(ensaio.dia_semana, ensaio.semana_mes, 12, 7);
+          // Ensaio recorrente: calcular ocorrências para o mês atual e próximo mês
+          // Buscar até 2 meses à frente (sem limite de dias, apenas limite de meses)
+          const ocorrencias = calcularOcorrenciasFuturas(ensaio.dia_semana, ensaio.semana_mes, 2, 999);
           console.log(`  Ocorrências calculadas:`, ocorrencias);
           
+          // Primeiro, coletar todas as ocorrências do mês atual e próximo mês
+          const ocorrenciasMesAtual = [];
+          const ocorrenciasProximoMes = [];
+          
           ocorrencias.forEach((dataOcorrencia, index) => {
-            // Criar chave única para evitar duplicatas: id_original + data
             const chaveUnica = `${ensaio.id}_${dataOcorrencia}`;
-            
-            // Verificar se já existe esta combinação
             if (chavesUnicas.has(chaveUnica)) {
-              return; // Pular se já existe
+              return;
             }
             
+            const dataOcorrenciaObj = new Date(dataOcorrencia + 'T00:00:00');
+            const estaNoMesAtual = dataOcorrenciaObj >= inicioMes && dataOcorrenciaObj <= fimMes;
+            const estaNoProximoMes = dataOcorrenciaObj >= inicioProximoMes && dataOcorrenciaObj <= fimProximoMes;
+            
+            if (estaNoMesAtual) {
+              ocorrenciasMesAtual.push({ data: dataOcorrencia, index, chaveUnica });
+            } else if (estaNoProximoMes) {
+              ocorrenciasProximoMes.push({ data: dataOcorrencia, index, chaveUnica });
+            }
+          });
+          
+          // Verificar se há ocorrências no mês atual que ainda não passaram
+          const hojeComHora = new Date();
+          const horaAtual = hojeComHora.getHours();
+          const hojeNormalizado = new Date();
+          hojeNormalizado.setHours(0, 0, 0, 0);
+          
+          const ocorrenciasFuturasMesAtual = ocorrenciasMesAtual.filter(occ => {
+            const dataObj = new Date(occ.data + 'T00:00:00');
+            const diffDays = Math.floor((dataObj - hojeNormalizado) / (1000 * 60 * 60 * 24));
+            // Se for hoje, verificar horário (só incluir se ainda não passou das 20h)
+            if (diffDays === 0) {
+              return horaAtual <= 20;
+            }
+            return diffDays > 0;
+          });
+          
+          // Se há ocorrências futuras no mês atual, usar essas
+          // Se não há, usar as do próximo mês
+          const ocorrenciasParaUsar = ocorrenciasFuturasMesAtual.length > 0 
+            ? ocorrenciasFuturasMesAtual 
+            : ocorrenciasProximoMes;
+          
+          ocorrenciasParaUsar.forEach(({ data: dataOcorrencia, index, chaveUnica }) => {
             chavesUnicas.add(chaveUnica);
             
-            // Criar uma cópia do ensaio para cada ocorrência
             const ensaioOcorrencia = {
               ...ensaio,
-              id: `${ensaio.id}_${index}`, // ID único para cada ocorrência
-              id_original: ensaio.id, // Manter referência ao ID original
+              id: `${ensaio.id}_${index}`,
+              id_original: ensaio.id,
               proxima_data: dataOcorrencia
             };
             
-            // Verificar se deve aparecer (considerando horário de 20h e limite de 7 dias)
-            const deveAparecerResult = deveAparecer(dataOcorrencia, ensaio.horario, 7);
-            console.log(`  Data ${dataOcorrencia}: deveAparecer = ${deveAparecerResult}`);
-            
-            if (deveAparecerResult) {
-              ensaiosExpandidos.push(ensaioOcorrencia);
-            }
+            console.log(`  Data ${dataOcorrencia}: incluindo`);
+            ensaiosExpandidos.push(ensaioOcorrencia);
           });
         } else {
           // Ensaio não recorrente: usar data única
@@ -275,13 +320,60 @@ router.get('/public', (req, res) => {
             
             // Verificar se já existe esta combinação
             if (!chavesUnicas.has(chaveUnica)) {
-              chavesUnicas.add(chaveUnica);
+              const dataEnsaioObj = new Date(ensaio.proxima_data + 'T00:00:00');
+              const estaNoMesAtual = dataEnsaioObj >= inicioMes && dataEnsaioObj <= fimMes;
+              const estaNoProximoMes = dataEnsaioObj >= inicioProximoMes && dataEnsaioObj <= fimProximoMes;
               
-              const deveAparecerResult = deveAparecer(ensaio.proxima_data, ensaio.horario, 7);
-              console.log(`  Ensaio não recorrente - Data ${ensaio.proxima_data}: deveAparecer = ${deveAparecerResult}`);
+              // Se a data já passou (antes do início do mês atual), pular
+              if (dataEnsaioObj < inicioMes) {
+                console.log(`  Ensaio não recorrente - Data ${ensaio.proxima_data}: já passou, pulando`);
+                return;
+              }
               
-              if (deveAparecerResult) {
-                ensaiosExpandidos.push(ensaio);
+              // Verificar se a data já passou (considerando horário de 20h)
+              const hojeComHora = new Date();
+              const horaAtual = hojeComHora.getHours();
+              const hojeNormalizado = new Date();
+              hojeNormalizado.setHours(0, 0, 0, 0);
+              const diffDays = Math.floor((dataEnsaioObj - hojeNormalizado) / (1000 * 60 * 60 * 24));
+              
+              // Se está no mês atual
+              if (estaNoMesAtual) {
+                // Incluir se ainda não passou (ou se passou hoje mas ainda não são 20h)
+                const aindaNaoPassou = diffDays > 0 || (diffDays === 0 && horaAtual <= 20);
+                if (aindaNaoPassou) {
+                  chavesUnicas.add(chaveUnica);
+                  console.log(`  Ensaio não recorrente - Data ${ensaio.proxima_data}: mês atual, ainda não passou - incluindo`);
+                  ensaiosExpandidos.push(ensaio);
+                } else {
+                  console.log(`  Ensaio não recorrente - Data ${ensaio.proxima_data}: mês atual, já passou - pulando`);
+                }
+              } 
+              // Se está no próximo mês, incluir apenas se não há ensaios futuros no mês atual
+              else if (estaNoProximoMes) {
+                // Verificar se há outros ensaios no mês atual que ainda não passaram
+                const temEnsaioFuturoMesAtual = ensaios.some(e => {
+                  if (!e.proxima_data || e.id === ensaio.id) return false;
+                  try {
+                    const dataE = new Date(e.proxima_data + 'T00:00:00');
+                    const estaNoMesAtualE = dataE >= inicioMes && dataE <= fimMes;
+                    if (!estaNoMesAtualE) return false;
+                    const diffDaysE = Math.floor((dataE - hojeNormalizado) / (1000 * 60 * 60 * 24));
+                    return diffDaysE > 0 || (diffDaysE === 0 && horaAtual <= 20);
+                  } catch {
+                    return false;
+                  }
+                });
+                
+                if (!temEnsaioFuturoMesAtual) {
+                  chavesUnicas.add(chaveUnica);
+                  console.log(`  Ensaio não recorrente - Data ${ensaio.proxima_data}: próximo mês, sem ensaios futuros no mês atual - incluindo`);
+                  ensaiosExpandidos.push(ensaio);
+                } else {
+                  console.log(`  Ensaio não recorrente - Data ${ensaio.proxima_data}: próximo mês, mas há ensaios futuros no mês atual - pulando`);
+                }
+              } else {
+                console.log(`  Ensaio não recorrente - Data ${ensaio.proxima_data}: fora do período, pulando`);
               }
             }
           } else {
