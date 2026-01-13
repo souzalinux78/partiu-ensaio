@@ -34,6 +34,9 @@ const init = async () => {
     // Verificar/criar tabelas
     await createTables();
     
+    // Verificar e adicionar colunas faltantes (migrações)
+    await checkAndAddMissingColumns();
+    
     // Criar admin padrão
     await createDefaultAdmin();
     
@@ -94,6 +97,7 @@ const createTablesManually = async () => {
       name VARCHAR(255) NOT NULL,
       role ENUM('admin', 'encarregado', 'musico') NOT NULL DEFAULT 'encarregado',
       aprovado TINYINT(1) DEFAULT 1,
+      tipo ENUM('local', 'regional') NULL COMMENT 'Tipo de encarregado (local ou regional)',
       instrumento VARCHAR(100) NULL,
       categoria_instrumento VARCHAR(50) NULL,
       celular VARCHAR(20) NULL,
@@ -155,6 +159,39 @@ const createTablesManually = async () => {
       INDEX idx_data_ensaio (data_ensaio)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
   `);
+};
+
+const checkAndAddMissingColumns = async () => {
+  try {
+    // Verificar se a coluna 'tipo' existe na tabela users
+    const [columns] = await pool.execute(`
+      SELECT COLUMN_NAME 
+      FROM INFORMATION_SCHEMA.COLUMNS 
+      WHERE TABLE_SCHEMA = ? 
+      AND TABLE_NAME = 'users' 
+      AND COLUMN_NAME = 'tipo'
+    `, [dbConfig.database]);
+    
+    if (columns.length === 0) {
+      console.log('📝 Adicionando coluna "tipo" na tabela users...');
+      await pool.execute(`
+        ALTER TABLE users 
+        ADD COLUMN tipo ENUM('local', 'regional') NULL 
+        COMMENT 'Tipo de encarregado (local ou regional)' 
+        AFTER aprovado
+      `);
+      console.log('✅ Coluna "tipo" adicionada com sucesso!');
+    } else {
+      console.log('✅ Coluna "tipo" já existe na tabela users');
+    }
+  } catch (err) {
+    // Se a coluna já existe, ignorar erro
+    if (err.code === 'ER_DUP_FIELDNAME') {
+      console.log('✅ Coluna "tipo" já existe na tabela users');
+    } else {
+      console.error('Erro ao verificar/adicionar coluna "tipo":', err.message);
+    }
+  }
 };
 
 const createDefaultAdmin = async () => {

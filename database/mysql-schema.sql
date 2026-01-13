@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS users (
     name VARCHAR(255) NOT NULL,
     role ENUM('admin', 'encarregado', 'musico') NOT NULL DEFAULT 'encarregado',
     aprovado TINYINT(1) DEFAULT 1 COMMENT '0 = Pendente, 1 = Aprovado',
+    tipo ENUM('local', 'regional') NULL COMMENT 'Tipo de encarregado (local ou regional)',
     instrumento VARCHAR(100) NULL COMMENT 'Instrumento do músico',
     categoria_instrumento VARCHAR(50) NULL COMMENT 'Categoria do instrumento (TECLAS, METAIS, MADEIRAS, CORDAS)',
     celular VARCHAR(20) NULL,
