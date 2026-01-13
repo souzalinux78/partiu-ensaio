@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Ícones PWA - Partiu Ensaio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        
+        .canvas-container {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        
+        .canvas-wrapper {
+            text-align: center;
+        }
+        
+        canvas {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            background: #000;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+        }
+        
+        .canvas-label {
+            margin-top: 10px;
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            margin: 30px 0;
+        }
+        
+        button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .download-links {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        .download-link {
+            display: inline-block;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+        }
+        
+        .download-link:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
+        .info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Gerador de Ícones PWA</h1>
+        <p style="text-align: center; margin-bottom: 20px; opacity: 0.9;">
+            Ícones baseados no símbolo musical estilizado (clave de sol + clave de fá)
+        </p>
+        
+        <div class="canvas-container">
+            <div class="canvas-wrapper">
+                <canvas id="icon192" width="192" height="192"></canvas>
+                <div class="canvas-label">192x192</div>
+            </div>
+            <div class="canvas-wrapper">
+                <canvas id="icon512" width="512" height="512"></canvas>
+                <div class="canvas-label">512x512</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button onclick="generateIcons()">🔄 Regenerar Ícones</button>
+            <button onclick="downloadAll()">💾 Baixar Todos os Ícones</button>
+        </div>
+        
+        <div class="download-links">
+            <a id="download192" class="download-link" download="icon-192.png">📥 Baixar 192x192</a>
+            <a id="download512" class="download-link" download="icon-512.png">📥 Baixar 512x512</a>
+        </div>
+        
+        <div class="info">
+            <strong>📋 Instruções:</strong><br>
+            1. Clique em "Baixar Todos os Ícones" para salvar os arquivos<br>
+            2. Coloque os arquivos na pasta <code>client/public/</code><br>
+            3. Os ícones serão usados automaticamente pelo PWA
+        </div>
+    </div>
+
+    <script>
+        function drawMusicalClefIcon(ctx, size) {
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const scale = size / 512; // Baseado no tamanho 512
+            
+            ctx.clearRect(0, 0, size, size);
+            
+            // Fundo com gradiente escuro
+            const bgGradient = ctx.createLinearGradient(0, 0, size, size);
+            bgGradient.addColorStop(0, '#1a1a2e');
+            bgGradient.addColorStop(1, '#0f0f1e');
+            ctx.fillStyle = bgGradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Adicionar brilho de fundo
+            const glowGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, size * 0.6);
+            glowGradient.addColorStop(0, 'rgba(102, 126, 234, 0.3)');
+            glowGradient.addColorStop(1, 'rgba(102, 126, 234, 0)');
+            ctx.fillStyle = glowGradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            ctx.save();
+            ctx.translate(centerX, centerY);
+            ctx.scale(scale, scale);
+            
+            // Cor prateada metálica
+            const silverGradient = ctx.createLinearGradient(-200, -200, 200, 200);
+            silverGradient.addColorStop(0, '#e8e8e8');
+            silverGradient.addColorStop(0.3, '#ffffff');
+            silverGradient.addColorStop(0.6, '#c0c0c0');
+            silverGradient.addColorStop(1, '#808080');
+            
+            // Cor azul para o brilho
+            const blueGradient = ctx.createLinearGradient(-200, -200, 200, 200);
+            blueGradient.addColorStop(0, 'rgba(102, 126, 234, 0.8)');
+            blueGradient.addColorStop(1, 'rgba(118, 75, 162, 0.8)');
+            
+            ctx.lineWidth = 8;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            
+            // Desenhar Clave de Sol (Treble Clef) - parte superior
+            ctx.beginPath();
+            ctx.strokeStyle = silverGradient;
+            ctx.shadowColor = 'rgba(102, 126, 234, 0.8)';
+            ctx.shadowBlur = 15;
+            
+            // Loop superior da clave de sol
+            ctx.moveTo(-80, -150);
+            ctx.quadraticCurveTo(-100, -180, -60, -200);
+            ctx.quadraticCurveTo(-20, -220, 20, -200);
+            ctx.quadraticCurveTo(40, -190, 60, -170);
+            
+            // Corpo da clave de sol
+            ctx.lineTo(80, -50);
+            ctx.quadraticCurveTo(90, 0, 80, 50);
+            ctx.lineTo(60, 100);
+            ctx.quadraticCurveTo(40, 150, 0, 180);
+            ctx.quadraticCurveTo(-40, 200, -80, 180);
+            
+            // Curva inferior conectando com clave de fá
+            ctx.quadraticCurveTo(-100, 170, -90, 150);
+            ctx.stroke();
+            
+            // Desenhar Clave de Fá (Bass Clef) - parte inferior
+            ctx.beginPath();
+            ctx.strokeStyle = silverGradient;
+            
+            // Curva inferior da clave de fá
+            ctx.moveTo(-90, 150);
+            ctx.quadraticCurveTo(-100, 170, -80, 190);
+            ctx.quadraticCurveTo(-60, 210, -30, 210);
+            ctx.quadraticCurveTo(0, 210, 30, 200);
+            ctx.quadraticCurveTo(50, 190, 60, 170);
+            
+            // Dois pontos da clave de fá
+            ctx.stroke();
+            
+            // Pontos da clave de fá
+            ctx.fillStyle = silverGradient;
+            ctx.shadowBlur = 10;
+            ctx.beginPath();
+            ctx.arc(-50, 190, 12, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(-50, 220, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Adicionar brilho azul nas curvas principais
+            ctx.globalCompositeOperation = 'screen';
+            ctx.strokeStyle = blueGradient;
+            ctx.lineWidth = 4;
+            ctx.shadowBlur = 20;
+            
+            // Redesenhar partes principais com brilho azul
+            ctx.beginPath();
+            ctx.moveTo(-80, -150);
+            ctx.quadraticCurveTo(-100, -180, -60, -200);
+            ctx.quadraticCurveTo(-20, -220, 20, -200);
+            ctx.quadraticCurveTo(40, -190, 60, -170);
+            ctx.lineTo(80, -50);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+        
+        function generateIcons() {
+            const canvas192 = document.getElementById('icon192');
+            const canvas512 = document.getElementById('icon512');
+            
+            const ctx192 = canvas192.getContext('2d');
+            const ctx512 = canvas512.getContext('2d');
+            
+            drawMusicalClefIcon(ctx192, 192);
+            drawMusicalClefIcon(ctx512, 512);
+            
+            // Atualizar links de download
+            canvas192.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                document.getElementById('download192').href = url;
+            });
+            
+            canvas512.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                document.getElementById('download512').href = url;
+            });
+        }
+        
+        function downloadAll() {
+            const canvas192 = document.getElementById('icon192');
+            const canvas512 = document.getElementById('icon512');
+            
+            // Download 192x192
+            canvas192.toBlob((blob) => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'icon-192.png';
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+            
+            // Download 512x512 após um pequeno delay
+            setTimeout(() => {
+                canvas512.toBlob((blob) => {
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'icon-512.png';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                });
+            }, 300);
+        }
+        
+        // Gerar ícones ao carregar a página
+        window.addEventListener('load', () => {
+            generateIcons();
+        });
+    </script>
+</body>
+</html>

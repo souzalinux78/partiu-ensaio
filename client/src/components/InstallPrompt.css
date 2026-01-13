@@ -5,8 +5,12 @@
   right: 0;
   z-index: 10000;
   padding: 15px;
+  padding-bottom: max(15px, env(safe-area-inset-bottom));
   animation: slideUp 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
   pointer-events: none;
+  /* Garantir que apareça acima de tudo */
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
 }
 
 @keyframes slideUp {
@@ -35,12 +39,16 @@
   color: white;
   padding: 20px;
   border-radius: 20px 20px 0 0;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
   max-width: 600px;
   margin: 0 auto;
   position: relative;
   pointer-events: all;
   animation: pulse 2s ease-in-out infinite;
+  /* Garantir visibilidade em todos os dispositivos */
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  will-change: transform;
 }
 
 .install-prompt-close {

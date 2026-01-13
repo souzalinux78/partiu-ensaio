@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Screenshots PWA</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 1000px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        
+        .info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+        
+        .info strong {
+            display: block;
+            margin-bottom: 10px;
+            font-size: 1.1rem;
+        }
+        
+        button {
+            background: white;
+            color: #667eea;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin: 10px;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(255, 255, 255, 0.3);
+        }
+        
+        .buttons {
+            text-align: center;
+            margin: 30px 0;
+        }
+        
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 20px;
+        }
+        
+        .instructions ol {
+            margin-left: 20px;
+            margin-top: 10px;
+        }
+        
+        .instructions li {
+            margin: 8px 0;
+        }
+        
+        code {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📸 Gerador de Screenshots PWA</h1>
+        
+        <div class="info">
+            <strong>📋 Sobre Screenshots PWA:</strong>
+            <p>
+                Os screenshots são imagens que aparecem nas lojas de aplicativos (Google Play Store, Apple App Store) 
+                quando o PWA é instalado. Eles ajudam os usuários a entender o que o app faz antes de instalá-lo.
+            </p>
+        </div>
+        
+        <div class="info">
+            <strong>📐 Tamanhos Necessários:</strong>
+            <ul style="margin-left: 20px; margin-top: 10px;">
+                <li><strong>Wide (Desktop/Tablet):</strong> 1280x720 pixels</li>
+                <li><strong>Narrow (Mobile):</strong> 750x1334 pixels (iPhone) ou 1080x1920 pixels (Android)</li>
+            </ul>
+        </div>
+        
+        <div class="buttons">
+            <button onclick="window.open('/', '_blank')">🌐 Abrir Site em Nova Aba</button>
+            <button onclick="showInstructions()">📖 Ver Instruções</button>
+        </div>
+        
+        <div class="instructions" id="instructions" style="display: none;">
+            <strong>📝 Como Criar Screenshots:</strong>
+            <ol>
+                <li>Abra o site em uma nova aba usando o botão acima</li>
+                <li>Para <strong>screenshot wide (1280x720):</strong>
+                    <ul style="margin-left: 20px; margin-top: 5px;">
+                        <li>Redimensione a janela do navegador para 1280x720 pixels</li>
+                        <li>Navegue até a página inicial (lista de ensaios)</li>
+                        <li>Use uma extensão de captura de tela ou pressione <code>F12</code> → Console → Execute: <code>html2canvas(document.body).then(canvas => { const link = document.createElement('a'); link.download = 'screenshot-wide.png'; link.href = canvas.toDataURL(); link.click(); })</code></li>
+                    </ul>
+                </li>
+                <li>Para <strong>screenshot narrow (750x1334):</strong>
+                    <ul style="margin-left: 20px; margin-top: 5px;">
+                        <li>Abra as ferramentas de desenvolvedor (<code>F12</code>)</li>
+                        <li>Ative o modo de dispositivo móvel (ícone de celular)</li>
+                        <li>Configure para iPhone 12/13 (375x812) ou similar</li>
+                        <li>Navegue até a página inicial</li>
+                        <li>Use a mesma técnica de captura acima</li>
+                    </ul>
+                </li>
+                <li>Salve os arquivos como:
+                    <ul style="margin-left: 20px; margin-top: 5px;">
+                        <li><code>screenshot-wide.png</code> na pasta <code>client/public/</code></li>
+                        <li><code>screenshot-narrow.png</code> na pasta <code>client/public/</code></li>
+                    </ul>
+                </li>
+                <li>Recompile o frontend: <code>npm run build</code></li>
+            </ol>
+            
+            <p style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.2);">
+                <strong>💡 Dica:</strong> Você também pode usar ferramentas online como 
+                <a href="https://www.screencapture.com" target="_blank" style="color: #fff; text-decoration: underline;">ScreenCapture.com</a> 
+                ou extensões do navegador para capturar screenshots.
+            </p>
+        </div>
+    </div>
+
+    <script>
+        function showInstructions() {
+            const instructions = document.getElementById('instructions');
+            if (instructions.style.display === 'none') {
+                instructions.style.display = 'block';
+            } else {
+                instructions.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>

@@ -9,6 +9,7 @@ import DashboardMusico from './components/DashboardMusico';
 import EnsaiosPublicos from './components/EnsaiosPublicos';
 import InstallPrompt from './components/InstallPrompt';
 import { getAuthToken, getUser } from './utils/auth';
+import { initNotifications } from './utils/notifications';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -21,6 +22,11 @@ function App() {
       setUser(userData);
     }
     setLoading(false);
+    
+    // Inicializar sistema de notificações
+    initNotifications().catch(err => {
+      console.log('Notificações não disponíveis:', err);
+    });
   }, []);
 
   const handleLogin = (userData, token) => {

@@ -6,61 +6,89 @@ const InstallPrompt = () => {
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  // Função para detectar se é mobile
+  const detectMobile = () => {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    const mobileRegex = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i;
+    const isMobileDevice = mobileRegex.test(userAgent);
+    const isSmallScreen = window.innerWidth <= 768;
+    const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    return isMobileDevice || (isSmallScreen && hasTouchScreen);
+  };
+
+  // Função para detectar iOS
+  const detectIOS = () => {
+    const userAgent = navigator.userAgent || navigator.vendor || window.opera;
+    return /iPad|iPhone|iPod/.test(userAgent) && !window.MSStream;
+  };
+
+  // Função para verificar se já está instalado
+  const checkIfInstalled = () => {
+    // Verificar display-mode standalone
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      return true;
+    }
+
+    // Verificar iOS standalone mode
+    const isIOSDevice = detectIOS();
+    if (isIOSDevice && ('standalone' in window.navigator) && window.navigator.standalone) {
+      return true;
+    }
+
+    // Verificar se foi adicionado à tela inicial (Android)
+    if (window.navigator.standalone === false) {
+      return false;
+    }
+
+    return false;
+  };
 
   useEffect(() => {
-    // Verificar se já está instalado
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsInstalled(true);
+    const mobile = detectMobile();
+    const ios = detectIOS();
+    const installed = checkIfInstalled();
+
+    setIsMobile(mobile);
+    setIsIOS(ios);
+    setIsInstalled(installed);
+
+    // Se já estiver instalado, não mostrar prompt
+    if (installed) {
       return;
     }
 
-    // Verificar se está em iOS
-    const iosCheck = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    setIsIOS(iosCheck);
-    
-    const isInStandaloneMode = ('standalone' in window.navigator) && window.navigator.standalone;
+    // Verificar se o usuário já viu o prompt hoje
+    const hasSeenPrompt = localStorage.getItem('pwa-install-prompt-seen');
+    const dismissedToday = localStorage.getItem('pwa-install-prompt-dismissed');
+    const today = new Date().toDateString();
+    const shouldShow = !hasSeenPrompt || (dismissedToday !== today);
 
-    if (iosCheck && isInStandaloneMode) {
-      setIsInstalled(true);
-      return;
-    }
-
-    // Verificar se está em mobile
-    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-
-    // Escutar evento beforeinstallprompt (Android/Chrome)
+    // Escutar evento beforeinstallprompt (Android/Chrome/Edge)
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
       
-      // Mostrar prompt imediatamente se for mobile, ou após 2 segundos se for desktop
-      const delay = isMobile ? 1500 : 3000;
-      setTimeout(() => {
-        // Verificar se o usuário já viu o prompt antes (usando localStorage)
-        const hasSeenPrompt = localStorage.getItem('pwa-install-prompt-seen');
-        const dismissedToday = localStorage.getItem('pwa-install-prompt-dismissed');
-        const today = new Date().toDateString();
-        
-        // Mostrar se não viu antes OU se foi dispensado há mais de 1 dia
-        if (!hasSeenPrompt || (dismissedToday !== today)) {
+      // Mostrar prompt imediatamente em mobile, ou após delay em desktop
+      if (shouldShow) {
+        const delay = mobile ? 500 : 2000; // 0.5s em mobile, 2s em desktop
+        setTimeout(() => {
           setShowPrompt(true);
-        }
-      }, delay);
+        }, delay);
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Para iOS, mostrar prompt mesmo sem beforeinstallprompt
-    if (iosCheck && !isInStandaloneMode) {
+    // Para iOS e outros dispositivos mobile, mostrar prompt mesmo sem beforeinstallprompt
+    if (mobile && shouldShow) {
+      // Mostrar imediatamente em mobile na primeira visita
+      const delay = ios ? 1000 : 800; // iOS precisa de um pouco mais de tempo
       setTimeout(() => {
-        const hasSeenPrompt = localStorage.getItem('pwa-install-prompt-seen');
-        const dismissedToday = localStorage.getItem('pwa-install-prompt-dismissed');
-        const today = new Date().toDateString();
-        
-        if (!hasSeenPrompt || (dismissedToday !== today)) {
-          setShowPrompt(true);
-        }
-      }, isMobile ? 2000 : 4000);
+        setShowPrompt(true);
+      }, delay);
     }
 
     // Escutar evento appinstalled
@@ -80,28 +108,45 @@ const InstallPrompt = () => {
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) {
-      // Se não houver deferredPrompt, mostrar instruções para iOS
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      // Se não houver deferredPrompt, mostrar instruções específicas por dispositivo
       if (isIOS) {
-        alert('Para instalar no iOS:\n\n1. Toque no botão de compartilhar (quadrado com seta)\n2. Selecione "Adicionar à Tela de Início"\n3. Toque em "Adicionar"');
+        alert('📱 Para instalar no iPhone/iPad:\n\n1. Toque no botão de compartilhar (quadrado com seta para cima)\n2. Role para baixo e selecione "Adicionar à Tela de Início"\n3. Toque em "Adicionar" no canto superior direito\n\n✨ O app aparecerá na sua tela inicial!');
+      } else if (isMobile) {
+        // Android ou outros mobile
+        const isChrome = /Chrome/.test(navigator.userAgent);
+        const isSamsung = /Samsung/.test(navigator.userAgent);
+        const isFirefox = /Firefox/.test(navigator.userAgent);
+        
+        if (isChrome || isSamsung) {
+          alert('📱 Para instalar no Android:\n\n1. Toque no menu (três pontos) no canto superior direito\n2. Selecione "Instalar aplicativo" ou "Adicionar à tela inicial"\n3. Confirme a instalação\n\n✨ O app aparecerá na sua tela inicial!');
+        } else if (isFirefox) {
+          alert('📱 Para instalar no Firefox:\n\n1. Toque no menu (três linhas) no canto superior direito\n2. Selecione "Página" → "Adicionar à Tela Inicial"\n3. Confirme a instalação\n\n✨ O app aparecerá na sua tela inicial!');
+        } else {
+          alert('📱 Para instalar:\n\n1. Abra o menu do navegador\n2. Procure por "Instalar aplicativo" ou "Adicionar à tela inicial"\n3. Siga as instruções na tela\n\n✨ O app aparecerá na sua tela inicial!');
+        }
       } else {
-        alert('Para instalar este app:\n\n1. Clique no ícone de menu (três pontos) no navegador\n2. Selecione "Instalar aplicativo" ou "Adicionar à tela inicial"');
+        alert('💻 Para instalar no computador:\n\n1. Clique no ícone de instalação na barra de endereços (se disponível)\n2. Ou clique no menu (três pontos) → "Instalar aplicativo"\n\n✨ O app abrirá em uma janela própria!');
       }
       setShowPrompt(false);
       localStorage.setItem('pwa-install-prompt-seen', 'true');
       return;
     }
 
-    // Mostrar prompt de instalação
-    deferredPrompt.prompt();
+    try {
+      // Mostrar prompt de instalação nativo
+      deferredPrompt.prompt();
 
-    // Aguardar resposta do usuário
-    const { outcome } = await deferredPrompt.userChoice;
+      // Aguardar resposta do usuário
+      const { outcome } = await deferredPrompt.userChoice;
 
-    if (outcome === 'accepted') {
-      console.log('✅ Usuário aceitou instalar o PWA');
-    } else {
-      console.log('❌ Usuário recusou instalar o PWA');
+      if (outcome === 'accepted') {
+        console.log('✅ Usuário aceitou instalar o PWA');
+        setIsInstalled(true);
+      } else {
+        console.log('❌ Usuário recusou instalar o PWA');
+      }
+    } catch (error) {
+      console.error('Erro ao mostrar prompt de instalação:', error);
     }
 
     setDeferredPrompt(null);
@@ -134,11 +179,13 @@ const InstallPrompt = () => {
         <div className="install-prompt-content">
           <div className="install-prompt-icon">📱</div>
           <div className="install-prompt-text">
-            <h3>Instale o App!</h3>
+            <h3>📱 Instale o App!</h3>
             <p>
               {isIOS 
-                ? 'Adicione à tela inicial para acesso rápido e uso offline'
-                : 'Instale o Partiu Ensaio para acesso rápido e uso offline!'
+                ? 'Adicione à tela inicial para acesso rápido, notificações e uso offline!'
+                : isMobile
+                ? 'Instale o Partiu Ensaio para acesso rápido, notificações e uso offline!'
+                : 'Instale o Partiu Ensaio para acesso rápido e melhor experiência!'
               }
             </p>
           </div>

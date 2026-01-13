@@ -18,17 +18,21 @@
     
     <!-- PWA - Apple iOS -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Partiu Ensaio" />
     
-    <!-- PWA - Android -->
+    <!-- PWA - Android/Chrome -->
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="application-name" content="Partiu Ensaio" />
+    <meta name="msapplication-TileColor" content="#667eea" />
+    <meta name="msapplication-config" content="/browserconfig.xml" />
     
-    <!-- Ícones para iOS -->
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/icon-192.png" />
-    <link rel="apple-touch-icon" sizes="192x192" href="%PUBLIC_URL%/icon-192.png" />
-    <link rel="apple-touch-icon" sizes="512x512" href="%PUBLIC_URL%/icon-512.png" />
+    <!-- Ícones para iOS (usando favicon como fallback) -->
+    <link rel="apple-touch-icon" href="%PUBLIC_URL%/favicon.ico" />
+    <link rel="apple-touch-icon" sizes="180x180" href="%PUBLIC_URL%/favicon.ico" />
+    
+    <!-- PWA - Windows -->
+    <meta name="msapplication-TileImage" content="%PUBLIC_URL%/favicon.ico" />
     
     <!-- Manifest PWA -->
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />

@@ -10,14 +10,14 @@
     },
     {
       "src": "/icon-192.png",
-      "type": "image/png",
       "sizes": "192x192",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
       "src": "/icon-512.png",
-      "type": "image/png",
       "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
@@ -25,24 +25,38 @@
   "display": "standalone",
   "theme_color": "#667eea",
   "background_color": "#ffffff",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "scope": "/",
   "categories": ["music", "entertainment", "productivity"],
-  "screenshots": [],
+  "screenshots": [
+    {
+      "src": "/screenshot-wide.png",
+      "sizes": "1280x720",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "Partiu Ensaio - Agenda de Ensaios"
+    },
+    {
+      "src": "/screenshot-narrow.png",
+      "sizes": "750x1334",
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Partiu Ensaio - Visualização Mobile"
+    }
+  ],
   "shortcuts": [
     {
       "name": "Meus Ensaios",
       "short_name": "Ensaios",
       "description": "Ver meus ensaios cadastrados",
-      "url": "/dashboard/encarregado",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "/dashboard/encarregado"
     },
     {
       "name": "Agenda",
       "short_name": "Agenda",
       "description": "Ver agenda de ensaios",
-      "url": "/dashboard/musico",
-      "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }]
+      "url": "/dashboard/musico"
     }
-  ]
+  ],
+  "prefer_related_applications": false
 }

@@ -111,3 +111,77 @@ self.addEventListener('message', (event) => {
 self.addEventListener('updatefound', () => {
   console.log('[Service Worker] Nova versão encontrada!');
 });
+
+// Handler para notificações push
+self.addEventListener('push', (event) => {
+  console.log('[Service Worker] Push recebido:', event);
+  
+  let notificationData = {
+    title: 'Partiu Ensaio',
+    body: 'Você tem uma nova notificação!',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    tag: 'partiu-ensaio',
+    data: {}
+  };
+  
+  if (event.data) {
+    try {
+      const data = event.data.json();
+      notificationData = {
+        ...notificationData,
+        ...data
+      };
+    } catch (e) {
+      notificationData.body = event.data.text();
+    }
+  }
+  
+  event.waitUntil(
+    self.registration.showNotification(notificationData.title, notificationData)
+  );
+});
+
+// Handler para cliques em notificações
+self.addEventListener('notificationclick', (event) => {
+  console.log('[Service Worker] Notificação clicada:', event);
+  
+  event.notification.close();
+  
+  const notificationData = event.notification.data || {};
+  const urlToOpen = notificationData.url || '/';
+  
+  event.waitUntil(
+    clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    }).then((clientList) => {
+      // Verificar se já existe uma janela aberta
+      for (let i = 0; i < clientList.length; i++) {
+        const client = clientList[i];
+        if (client.url === urlToOpen && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      
+      // Se não houver janela aberta, abrir uma nova
+      if (clients.openWindow) {
+        return clients.openWindow(urlToOpen);
+      }
+    })
+  );
+});
+
+// Handler para ações de notificação
+self.addEventListener('notificationclick', (event) => {
+  if (event.action === 'view') {
+    const notificationData = event.notification.data || {};
+    const urlToOpen = notificationData.url || '/';
+    
+    event.waitUntil(
+      clients.openWindow(urlToOpen)
+    );
+  }
+  
+  event.notification.close();
+});
