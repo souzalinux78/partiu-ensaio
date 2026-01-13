@@ -67,6 +67,7 @@ const InstallPrompt = () => {
 
   useEffect(() => {
     let installationCheckInterval = null;
+    const deferredPromptRef = { current: null };
 
     // Verificar periodicamente se o PWA foi instalado
     const checkInstallation = () => {
@@ -123,6 +124,7 @@ const InstallPrompt = () => {
     const handleBeforeInstallPrompt = (e) => {
       console.log('🎯 beforeinstallprompt capturado!');
       e.preventDefault();
+      deferredPromptRef.current = e;
       setDeferredPrompt(e);
       
       // Mostrar prompt imediatamente quando o evento for capturado
@@ -161,7 +163,7 @@ const InstallPrompt = () => {
           // Se o Service Worker está ativo, aguardar o beforeinstallprompt
           // Se não aparecer em 5 segundos, pode ser que não seja instalável
           setTimeout(() => {
-            if (!deferredPrompt && mobile && !ios) {
+            if (!deferredPromptRef.current && mobile && !ios) {
               console.warn('⚠️ beforeinstallprompt não apareceu após 5 segundos');
               console.warn('⚠️ Possíveis causas:');
               console.warn('   1. Service Worker não está ativo');
@@ -190,11 +192,11 @@ const InstallPrompt = () => {
     if (ios && mobile) {
       // Aguardar um pouco para ver se o beforeinstallprompt aparece
       setTimeout(() => {
-        if (!deferredPrompt) {
+        if (!deferredPromptRef.current) {
           // Se após 3 segundos não houver deferredPrompt, mostrar instruções para iOS
           const delay = 3000;
           setTimeout(() => {
-            if (!deferredPrompt) {
+            if (!deferredPromptRef.current) {
               setShowPrompt(true);
             }
           }, delay);

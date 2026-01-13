@@ -7,7 +7,9 @@ const DashboardAdmin = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState('estatisticas');
   const [ensaiosPendentes, setEnsaiosPendentes] = useState([]);
   const [todosEnsaios, setTodosEnsaios] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [musicosPendentes, setMusicosPendentes] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [encarregadosPendentes, setEncarregadosPendentes] = useState([]);
   const [todosPendentes, setTodosPendentes] = useState([]);
   const [estatisticas, setEstatisticas] = useState({ 

@@ -13,14 +13,7 @@ const DashboardMusico = ({ user, onLogout }) => {
     loadEnsaios();
   }, []);
 
-  // Carregar interesses do músico
-  useEffect(() => {
-    if (ensaios.length > 0) {
-      loadInteresses();
-    }
-  }, [ensaios]);
-
-  const loadInteresses = async () => {
+  const loadInteresses = React.useCallback(async () => {
     const interessesMap = {};
     for (const ensaio of ensaios) {
       if (ensaio.proxima_data) {

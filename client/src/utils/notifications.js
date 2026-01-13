@@ -186,7 +186,7 @@ export const initNotifications = async () => {
   return false;
 };
 
-export default {
+const notifications = {
   isNotificationSupported,
   requestNotificationPermission,
   showNotification,
@@ -198,3 +198,5 @@ export default {
   initNotifications,
   NotificationTypes
 };
+
+export default notifications;

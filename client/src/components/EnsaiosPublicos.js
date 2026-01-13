@@ -58,14 +58,33 @@ const EnsaiosPublicos = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const loadInteresses = useCallback(async () => {
+    if (!user || user.role !== 'musico') return;
+    
+    const interessesMap = {};
+    for (const ensaio of ensaios) {
+      if (ensaio.proxima_data) {
+        const ensaioId = ensaio.id_original || ensaio.id;
+        try {
+          const response = await api.get(`/interesse/verificar/${ensaioId}?data_ensaio=${ensaio.proxima_data}`);
+          const chave = `${ensaioId}_${ensaio.proxima_data}`;
+          interessesMap[chave] = response.data.temInteresse;
+        } catch (err) {
+          console.error('Erro ao verificar interesse:', err);
+        }
+      }
+    }
+    setInteresses(interessesMap);
+  }, [user, ensaios]);
+
   // Carregar interesses se o usuário for músico
   useEffect(() => {
     if (user && user.role === 'musico' && ensaios.length > 0) {
       loadInteresses();
     }
-  }, [ensaios, user]);
+  }, [ensaios, user, loadInteresses]);
 
-  const loadEnsaios = React.useCallback(async () => {
+  const loadEnsaios = useCallback(async () => {
     try {
       const response = await api.get('/ensaio/public');
       setEnsaios(response.data);
@@ -80,6 +99,11 @@ const EnsaiosPublicos = () => {
   // Atualizar referência
   useEffect(() => {
     loadEnsaiosRef.current = loadEnsaios;
+  }, [loadEnsaios]);
+
+  // Carregar ensaios ao montar
+  useEffect(() => {
+    loadEnsaios();
   }, [loadEnsaios]);
 
   // Função para filtrar ensaios
@@ -158,26 +182,9 @@ const EnsaiosPublicos = () => {
   // Atualizar filtro quando o termo de pesquisa mudar
   useEffect(() => {
     filtrarEnsaios(termoPesquisa, ensaios);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [termoPesquisa, ensaios]);
 
-  const loadInteresses = async () => {
-    if (!user || user.role !== 'musico') return;
-    
-    const interessesMap = {};
-    for (const ensaio of ensaios) {
-      if (ensaio.proxima_data) {
-        const ensaioId = ensaio.id_original || ensaio.id;
-        try {
-          const response = await api.get(`/interesse/verificar/${ensaioId}?data_ensaio=${ensaio.proxima_data}`);
-          const chave = `${ensaioId}_${ensaio.proxima_data}`;
-          interessesMap[chave] = response.data.temInteresse;
-        } catch (err) {
-          console.error('Erro ao verificar interesse:', err);
-        }
-      }
-    }
-    setInteresses(interessesMap);
-  };
 
   const handleInteresse = async (ensaio) => {
     // Se não estiver logado, redirecionar para login/cadastro
