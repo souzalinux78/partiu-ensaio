@@ -64,6 +64,9 @@ const createTables = () => {
           if (!existingColumns.includes('estado')) {
             columnsToAdd.push({ name: 'estado', def: 'TEXT' });
           }
+          if (!existingColumns.includes('tipo')) {
+            columnsToAdd.push({ name: 'tipo', def: 'TEXT' });
+          }
           
           // Adicionar colunas uma por uma
           columnsToAdd.forEach((col) => {

@@ -87,11 +87,11 @@ router.post('/login', (req, res) => {
 
 // Registrar novo usuário (encarregado - requer aprovação)
 router.post('/register', async (req, res) => {
-  const { email, password, name } = req.body;
+  const { email, password, name, tipo, instrumento, categoria_instrumento, celular, cidade, estado } = req.body;
   const db = getDb();
 
-  if (!email || !password || !name) {
-    return res.status(400).json({ error: 'Email, senha e nome são obrigatórios' });
+  if (!email || !password || !name || !tipo) {
+    return res.status(400).json({ error: 'Email, senha, nome e tipo são obrigatórios' });
   }
 
   db.get('SELECT * FROM users WHERE email = ?', [email], async (err, existingUser) => {
@@ -128,9 +128,23 @@ router.post('/register', async (req, res) => {
         const hash = await bcrypt.hash(password, 10);
         
         // Encarregados começam com aprovado = 0 (pendente)
-        db.run(
-          'INSERT INTO users (email, password, name, role, aprovado) VALUES (?, ?, ?, ?, ?)',
-          [email, hash, name, 'encarregado', 0],
+        // MySQL já tem todas as colunas no schema, não precisa verificar
+        const insertQuery = 'INSERT INTO users (email, password, name, role, aprovado, tipo, instrumento, categoria_instrumento, celular, cidade, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        const insertValues = [
+          email,
+          hash,
+          name,
+          'encarregado',
+          0,
+          tipo || null,
+          instrumento || null,
+          categoria_instrumento || null,
+          celular || null,
+          cidade || null,
+          estado || null
+        ];
+        
+        db.run(insertQuery, insertValues,
           async function(err, result) {
             if (err) {
               console.error('❌ Erro ao inserir usuário:', err);
@@ -145,16 +159,29 @@ router.post('/register', async (req, res) => {
               return res.status(500).json({ error: 'Erro ao obter ID do usuário criado' });
             }
 
-            // Preparar dados para o webhook
-            const webhookData = {
-              tipo: 'cadastro_encarregado',
-              id: userId,
-              email: email,
-              name: name,
-              role: 'encarregado',
-              aprovado: false,
-              created_at: new Date().toISOString()
-            };
+            // Buscar usuário criado para obter todos os dados
+            db.get('SELECT id, email, name, role, aprovado, tipo, instrumento, categoria_instrumento, celular, cidade, estado FROM users WHERE id = ?', [userId], async (err, newUser) => {
+              if (err) {
+                console.error('❌ Erro ao buscar usuário criado:', err);
+                return res.status(500).json({ error: 'Erro ao buscar usuário criado' });
+              }
+
+              // Preparar dados para o webhook
+              const webhookData = {
+                tipo: 'cadastro_encarregado',
+                id: newUser.id,
+                email: newUser.email,
+                name: newUser.name,
+                role: 'encarregado',
+                tipo_encarregado: newUser.tipo,
+                instrumento: newUser.instrumento,
+                categoria_instrumento: newUser.categoria_instrumento,
+                celular: newUser.celular,
+                cidade: newUser.cidade,
+                estado: newUser.estado,
+                aprovado: false,
+                created_at: new Date().toISOString()
+              };
 
             // Enviar dados para o webhook - AGUARDAR antes de retornar resposta
             let webhookEnviado = false;
@@ -222,15 +249,22 @@ router.post('/register', async (req, res) => {
               }
             }
 
-            res.status(201).json({
-              message: 'Cadastro realizado com sucesso! Aguarde a aprovação do administrador para acessar o sistema.',
-              user: {
-                id: userId,
-                email,
-                name,
-                role: 'encarregado',
-                aprovado: 0
-              }
+              res.status(201).json({
+                message: 'Cadastro realizado com sucesso! Aguarde a aprovação do administrador para acessar o sistema.',
+                user: {
+                  id: newUser.id,
+                  email: newUser.email,
+                  name: newUser.name,
+                  role: 'encarregado',
+                  tipo: newUser.tipo,
+                  instrumento: newUser.instrumento,
+                  categoria_instrumento: newUser.categoria_instrumento,
+                  celular: newUser.celular,
+                  cidade: newUser.cidade,
+                  estado: newUser.estado,
+                  aprovado: 0
+                }
+              });
             });
           }
         );
