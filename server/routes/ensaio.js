@@ -228,9 +228,7 @@ router.get('/public', (req, res) => {
       console.log('Hora atual:', horaAtual);
       console.log('Total de ensaios aprovados:', ensaios.length);
       
-      // Calcular início e fim do mês atual
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
+      // Calcular início e fim do mês atual (usar a variável 'hoje' já declarada acima)
       const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
       const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
       const inicioProximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
