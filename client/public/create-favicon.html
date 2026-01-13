@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Criar Favicon e Ícones PWA</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        canvas {
+            border: 1px solid #ccc;
+            margin: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Criar Ícones PWA - Partiu Ensaio</h1>
+    <p>Clique nos botões abaixo para gerar e baixar os ícones:</p>
+    
+    <div>
+        <h2>Favicon (16x16, 32x32)</h2>
+        <canvas id="favicon16" width="16" height="16"></canvas>
+        <canvas id="favicon32" width="32" height="32"></canvas>
+        <button onclick="downloadFavicon()">Baixar favicon.ico</button>
+    </div>
+    
+    <div>
+        <h2>Ícone 192x192</h2>
+        <canvas id="icon192" width="192" height="192"></canvas>
+        <button onclick="downloadIcon192()">Baixar icon-192x192.png</button>
+    </div>
+    
+    <div>
+        <h2>Ícone 512x512</h2>
+        <canvas id="icon512" width="512" height="512"></canvas>
+        <button onclick="downloadIcon512()">Baixar icon-512x512.png</button>
+    </div>
+
+    <script>
+        function drawIcon(canvas, size) {
+            const ctx = canvas.getContext('2d');
+            
+            // Fundo gradiente
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#667eea');
+            gradient.addColorStop(1, '#764ba2');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, size, size);
+            
+            // Texto "PE" centralizado
+            ctx.fillStyle = 'white';
+            ctx.font = `bold ${size * 0.4}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('PE', size / 2, size / 2);
+        }
+        
+        function init() {
+            drawIcon(document.getElementById('favicon16'), 16);
+            drawIcon(document.getElementById('favicon32'), 32);
+            drawIcon(document.getElementById('icon192'), 192);
+            drawIcon(document.getElementById('icon512'), 512);
+        }
+        
+        function downloadCanvas(canvas, filename, type = 'image/png') {
+            canvas.toBlob(function(blob) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                a.click();
+                URL.revokeObjectURL(url);
+            }, type);
+        }
+        
+        function downloadFavicon() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 32;
+            canvas.height = 32;
+            drawIcon(canvas, 32);
+            
+            canvas.toBlob(function(blob) {
+                // Converter PNG para ICO (simplificado - apenas PNG dentro de ICO)
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const pngData = new Uint8Array(e.target.result);
+                    // Criar ICO básico
+                    const ico = new Uint8Array(6 + 16 + pngData.length);
+                    // ICO header
+                    ico[0] = 0; ico[1] = 0; // Reserved
+                    ico[2] = 1; ico[3] = 0; // Type (1 = ICO)
+                    ico[4] = 1; ico[5] = 0; // Number of images
+                    // Image directory entry
+                    ico[6] = 32; // Width
+                    ico[7] = 32; // Height
+                    ico[8] = 0; // Color palette
+                    ico[9] = 0; // Reserved
+                    ico[10] = 1; ico[11] = 0; // Color planes
+                    ico[12] = 32; ico[13] = 0; // Bits per pixel
+                    ico[14] = pngData.length & 0xFF;
+                    ico[15] = (pngData.length >> 8) & 0xFF;
+                    ico[16] = (pngData.length >> 16) & 0xFF;
+                    ico[17] = (pngData.length >> 24) & 0xFF;
+                    ico[18] = 22; ico[19] = 0; ico[20] = 0; ico[21] = 0; // Offset
+                    // PNG data
+                    ico.set(pngData, 22);
+                    
+                    const blob = new Blob([ico], { type: 'image/x-icon' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'favicon.ico';
+                    a.click();
+                    URL.revokeObjectURL(url);
+                };
+                reader.readAsArrayBuffer(blob);
+            }, 'image/png');
+        }
+        
+        function downloadIcon192() {
+            downloadCanvas(document.getElementById('icon192'), 'icon-192x192.png');
+        }
+        
+        function downloadIcon512() {
+            downloadCanvas(document.getElementById('icon512'), 'icon-512x512.png');
+        }
+        
+        init();
+    </script>
+</body>
+</html>

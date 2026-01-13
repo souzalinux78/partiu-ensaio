@@ -4,21 +4,15 @@
   "description": "Agenda musical para ensaios de orquestra. Acesse seus ensaios a qualquer momento!",
   "icons": [
     {
-      "src": "/favicon.ico",
-      "sizes": "64x64 32x32 24x24 16x16",
-      "type": "image/x-icon",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.ico",
+      "src": "/icon-192x192.png",
       "sizes": "192x192",
-      "type": "image/x-icon",
+      "type": "image/png",
       "purpose": "any maskable"
     },
     {
-      "src": "/favicon.ico",
+      "src": "/icon-512x512.png",
       "sizes": "512x512",
-      "type": "image/x-icon",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ],
@@ -30,22 +24,6 @@
   "orientation": "any",
   "scope": "/",
   "categories": ["music", "entertainment", "productivity"],
-  "screenshots": [
-    {
-      "src": "/screenshot-wide.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Partiu Ensaio - Agenda de Ensaios"
-    },
-    {
-      "src": "/screenshot-narrow.png",
-      "sizes": "750x1334",
-      "type": "image/png",
-      "form_factor": "narrow",
-      "label": "Partiu Ensaio - Visualização Mobile"
-    }
-  ],
   "shortcuts": [
     {
       "name": "Meus Ensaios",
