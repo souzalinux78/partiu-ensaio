@@ -388,55 +388,41 @@ const EnsaiosPublicos = () => {
               <div className="ensaios-grid">
                 {ensaiosOrdenados.map((ensaio) => (
                   <div key={ensaio.id} className="ensaio-card">
-                    {ensaio.foto_local && (() => {
-                      // Detectar mobile para usar timestamp desde o início
-                      const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(
-                        navigator.userAgent || navigator.vendor || window.opera
-                      ) || window.innerWidth <= 768;
-                      
-                      // Em mobile, sempre adicionar timestamp para forçar bypass do cache
-                      const baseUrl = getBaseUrl();
-                      const imagePath = ensaio.foto_local;
-                      const imageUrl = isMobile 
-                        ? `${baseUrl}${imagePath}?t=${Date.now()}&v=1`
-                        : `${baseUrl}${imagePath}`;
-                      
-                      return (
-                        <div className="ensaio-image">
-                          <img
-                            key={`img-${ensaio.id}-${isMobile ? 'm' : 'd'}`}
-                            src={imageUrl}
-                            alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
-                            loading="lazy"
-                            onError={(e) => {
-                              const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                                   window.navigator.standalone;
-                              console.error('❌ Erro ao carregar imagem:', imageUrl);
-                              console.error('   getBaseUrl():', baseUrl);
-                              console.error('   foto_local:', imagePath);
-                              console.error('   URL completa:', imageUrl);
-                              console.error('   Dispositivo:', isMobile ? 'Mobile' : 'Desktop');
-                              console.error('   Modo:', isStandalone ? 'PWA Standalone' : 'Navegador');
-                              console.error('   User Agent:', navigator.userAgent);
-                              console.error('   Elemento img:', e.target);
-                              
-                              // Tentar recarregar com novo timestamp
-                              const retryUrl = `${baseUrl}${imagePath}?t=${Date.now()}&retry=1`;
-                              console.log('🔄 Tentando recarregar com novo timestamp:', retryUrl);
-                              e.target.src = retryUrl;
-                            }}
-                            onLoad={(e) => {
-                              const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                                   window.navigator.standalone;
-                              console.log('✅ Imagem carregada com sucesso:', imageUrl);
-                              console.log('   Dimensões:', e.target.naturalWidth, 'x', e.target.naturalHeight);
-                              console.log('   Dispositivo:', isMobile ? 'Mobile' : 'Desktop');
-                              console.log('   Modo:', isStandalone ? 'PWA Standalone' : 'Navegador');
-                            }}
-                          />
-                        </div>
-                      );
-                    })()}
+                    {ensaio.foto_local && (
+                      <div className="ensaio-image">
+                        <img
+                          key={`img-${ensaio.id}`}
+                          src={`${getBaseUrl()}${ensaio.foto_local}`}
+                          alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
+                          loading="lazy"
+                          onError={(e) => {
+                            // Evitar loop infinito: verificar se já tentou recarregar
+                            const retryCount = parseInt(e.target.dataset.retryCount || '0', 10);
+                            
+                            if (retryCount >= 1) {
+                              // Já tentou uma vez, esconder imagem e parar
+                              console.error('❌ Imagem não carregou após tentativas:', `${getBaseUrl()}${ensaio.foto_local}`);
+                              e.target.style.display = 'none';
+                              return;
+                            }
+                            
+                            // Primeira tentativa: adicionar timestamp e tentar novamente
+                            const baseUrl = getBaseUrl();
+                            const imagePath = ensaio.foto_local;
+                            const retryUrl = `${baseUrl}${imagePath}?t=${Date.now()}&retry=1`;
+                            
+                            console.warn('⚠️ Erro ao carregar imagem, tentando novamente:', retryUrl);
+                            e.target.dataset.retryCount = '1';
+                            e.target.src = retryUrl;
+                          }}
+                          onLoad={(e) => {
+                            // Limpar contador de retry se carregou com sucesso
+                            e.target.dataset.retryCount = '0';
+                            console.log('✅ Imagem carregada:', `${getBaseUrl()}${ensaio.foto_local}`);
+                          }}
+                        />
+                      </div>
+                    )}
                     <div className="ensaio-content">
                       <div className="ensaio-header">
                         <h3>{ensaio.nome_igreja || ensaio.local || 'Sem nome'}</h3>
