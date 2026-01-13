@@ -19,8 +19,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Servir arquivos estáticos (uploads) com headers CORS e cache
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+const uploadsPath = path.join(__dirname, 'uploads');
+console.log('📁 Diretório de uploads:', uploadsPath);
+
+// Verificar se o diretório existe
+if (!require('fs').existsSync(uploadsPath)) {
+  require('fs').mkdirSync(uploadsPath, { recursive: true });
+  console.log('✅ Diretório de uploads criado');
+}
+
+app.use('/uploads', express.static(uploadsPath, {
   setHeaders: (res, filePath) => {
+    console.log('📤 Servindo arquivo:', filePath);
     // Adicionar headers CORS para imagens
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -39,6 +49,17 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
     }
   }
 }));
+
+// Rota de teste para verificar se uploads está funcionando
+app.get('/test-uploads', (req, res) => {
+  const fs = require('fs');
+  const files = fs.readdirSync(uploadsPath);
+  res.json({
+    uploadsPath,
+    filesCount: files.length,
+    files: files.slice(0, 10) // Primeiros 10 arquivos
+  });
+});
 
 // Rotas
 app.use('/api/auth', authRoutes);

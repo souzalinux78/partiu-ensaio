@@ -395,11 +395,18 @@ const EnsaiosPublicos = () => {
                           alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
                           loading="lazy"
                           onError={(e) => {
-                            console.error('Erro ao carregar imagem:', `${getBaseUrl()}${ensaio.foto_local}`);
+                            const imgUrl = `${getBaseUrl()}${ensaio.foto_local}`;
+                            console.error('❌ Erro ao carregar imagem:', imgUrl);
+                            console.error('   getBaseUrl():', getBaseUrl());
+                            console.error('   foto_local:', ensaio.foto_local);
+                            console.error('   URL completa:', imgUrl);
+                            console.error('   Elemento img:', e.target);
                             e.target.style.display = 'none';
                           }}
-                          onLoad={() => {
-                            console.log('Imagem carregada com sucesso:', `${getBaseUrl()}${ensaio.foto_local}`);
+                          onLoad={(e) => {
+                            const imgUrl = `${getBaseUrl()}${ensaio.foto_local}`;
+                            console.log('✅ Imagem carregada com sucesso:', imgUrl);
+                            console.log('   Dimensões:', e.target.naturalWidth, 'x', e.target.naturalHeight);
                           }}
                         />
                       </div>

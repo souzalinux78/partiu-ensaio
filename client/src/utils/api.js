@@ -22,9 +22,15 @@ const getApiUrl = () => {
 
 // Função para obter URL base para imagens/arquivos estáticos
 export const getBaseUrl = () => {
-  // Se estiver em localhost, usar localhost:5000
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    return 'http://localhost:5000';
+  const hostname = window.location.hostname;
+  const isProduction = hostname.includes('partiuensaio.automatizeonline.com.br') || 
+                       hostname.includes('partiuensaio.com');
+  
+  // Se estiver em localhost ou desenvolvimento, SEMPRE usar localhost:5000 (backend)
+  if (hostname === 'localhost' || hostname === '127.0.0.1' || !isProduction) {
+    const baseUrl = 'http://localhost:5000';
+    console.log('🖼️ getBaseUrl (dev):', baseUrl);
+    return baseUrl;
   }
   
   // Verificar se está rodando como PWA (standalone mode)
@@ -38,10 +44,13 @@ export const getBaseUrl = () => {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     const port = window.location.port ? `:${window.location.port}` : '';
-    return `${protocol}//${hostname}${port}`;
+    const baseUrl = `${protocol}//${hostname}${port}`;
+    console.log('🖼️ getBaseUrl (PWA):', baseUrl);
+    return baseUrl;
   }
   
-  // Se não for PWA, usar URL relativa (mesmo domínio)
+  // Se não for PWA em produção, usar URL relativa (mesmo domínio)
+  console.log('🖼️ getBaseUrl (web):', '(relativo)');
   return '';
 };
 
