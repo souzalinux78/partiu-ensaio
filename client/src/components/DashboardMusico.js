@@ -28,7 +28,14 @@ const DashboardMusico = ({ user, onLogout }) => {
       }
     }
     setInteresses(interessesMap);
-  };
+  }, [ensaios]);
+
+  // Carregar interesses quando os ensaios mudarem
+  useEffect(() => {
+    if (ensaios.length > 0) {
+      loadInteresses();
+    }
+  }, [ensaios, loadInteresses]);
 
   const loadEnsaios = async () => {
     try {
