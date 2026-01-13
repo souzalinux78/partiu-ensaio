@@ -1,5 +1,5 @@
-const CACHE_NAME = 'partiu-ensaio-v2';
-const RUNTIME_CACHE = 'partiu-ensaio-runtime-v2';
+const CACHE_NAME = 'partiu-ensaio-v3';
+const RUNTIME_CACHE = 'partiu-ensaio-runtime-v3';
 
 // Arquivos estáticos para cache inicial
 const STATIC_CACHE_URLS = [
@@ -67,6 +67,14 @@ self.addEventListener('fetch', (event) => {
   // Ignorar completamente requisições de uploads (deixar passar direto para a rede)
   // Isso evita problemas de cache e garante que as imagens sempre sejam buscadas do servidor
   if (url.pathname.startsWith('/uploads/')) {
+    return;
+  }
+  
+  // Ignorar requisições de ícones PWA (deixar passar direto para a rede)
+  // Isso garante que os ícones sempre sejam buscados do servidor e não do cache
+  if (url.pathname.startsWith('/icon-') || 
+      url.pathname === '/favicon.ico' || 
+      url.pathname.startsWith('/apple-touch-icon')) {
     return;
   }
   

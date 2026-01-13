@@ -159,16 +159,24 @@ const InstallPrompt = () => {
                 console.log('🔍 Validando ícones do manifest...');
                 for (const icon of manifest.icons) {
                   try {
-                    const iconResponse = await fetch(icon.src);
+                    // Usar URL absoluta e cache: 'reload' para forçar buscar da rede (ignorar Service Worker)
+                    const iconUrl = icon.src.startsWith('http') ? icon.src : `${window.location.origin}${icon.src}`;
+                    const iconResponse = await fetch(iconUrl, { 
+                      cache: 'reload' // Forçar buscar da rede, ignorando cache do Service Worker
+                    });
+                    
                     if (iconResponse.ok) {
                       const contentType = iconResponse.headers.get('content-type');
                       if (contentType && contentType.startsWith('image/')) {
                         console.log(`✅ Ícone válido: ${icon.src} (${icon.sizes}, ${contentType})`);
                       } else {
                         console.error(`❌ Ícone inválido (tipo incorreto): ${icon.src} (${contentType})`);
+                        console.error(`   URL completa: ${iconUrl}`);
+                        console.error(`   Status: ${iconResponse.status}`);
                       }
                     } else {
                       console.error(`❌ Ícone não encontrado: ${icon.src} (${iconResponse.status})`);
+                      console.error(`   URL completa: ${iconUrl}`);
                     }
                   } catch (iconErr) {
                     console.error(`❌ Erro ao validar ícone ${icon.src}:`, iconErr);
