@@ -26,7 +26,22 @@ export const getBaseUrl = () => {
   if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
     return 'http://localhost:5000';
   }
-  // Em produção, usar URL relativa (mesmo domínio)
+  
+  // Verificar se está rodando como PWA (standalone mode)
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                       window.navigator.standalone || 
+                       document.referrer.includes('android-app://');
+  
+  // Em produção, sempre usar URL absoluta para garantir que funcione no PWA
+  // URLs relativas podem não funcionar corretamente no PWA standalone
+  if (isStandalone) {
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port ? `:${window.location.port}` : '';
+    return `${protocol}//${hostname}${port}`;
+  }
+  
+  // Se não for PWA, usar URL relativa (mesmo domínio)
   return '';
 };
 

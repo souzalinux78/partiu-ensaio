@@ -600,8 +600,13 @@ const DashboardEncarregado = ({ user, onLogout }) => {
                       <img
                         src={`${getBaseUrl()}${ensaio.foto_local}`}
                         alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
+                        loading="lazy"
                         onError={(e) => {
+                          console.error('Erro ao carregar imagem:', `${getBaseUrl()}${ensaio.foto_local}`);
                           e.target.style.display = 'none';
+                        }}
+                        onLoad={() => {
+                          console.log('Imagem carregada com sucesso:', `${getBaseUrl()}${ensaio.foto_local}`);
                         }}
                       />
                     </div>

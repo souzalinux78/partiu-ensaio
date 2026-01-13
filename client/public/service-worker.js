@@ -64,8 +64,25 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // Ignorar requisições de uploads
+  // Para imagens de uploads, sempre buscar da rede (não cachear)
   if (url.pathname.startsWith('/uploads/')) {
+    event.respondWith(
+      fetch(request, { cache: 'no-store' })
+        .then((response) => {
+          // Se a resposta for válida, retornar
+          if (response && response.status === 200) {
+            return response;
+          }
+          // Se falhar, tentar do cache como fallback
+          return caches.match(request).then((cachedResponse) => {
+            return cachedResponse || response;
+          });
+        })
+        .catch(() => {
+          // Se a rede falhar, tentar do cache
+          return caches.match(request);
+        })
+    );
     return;
   }
   
