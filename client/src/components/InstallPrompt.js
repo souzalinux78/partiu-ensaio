@@ -153,6 +153,28 @@ const InstallPrompt = () => {
               console.log('✅ Manifest.json carregado:', manifest.name);
               console.log('✅ Manifest display:', manifest.display);
               console.log('✅ Manifest start_url:', manifest.start_url);
+              
+              // Validar ícones do manifest
+              if (manifest.icons && manifest.icons.length > 0) {
+                console.log('🔍 Validando ícones do manifest...');
+                for (const icon of manifest.icons) {
+                  try {
+                    const iconResponse = await fetch(icon.src);
+                    if (iconResponse.ok) {
+                      const contentType = iconResponse.headers.get('content-type');
+                      if (contentType && contentType.startsWith('image/')) {
+                        console.log(`✅ Ícone válido: ${icon.src} (${icon.sizes}, ${contentType})`);
+                      } else {
+                        console.error(`❌ Ícone inválido (tipo incorreto): ${icon.src} (${contentType})`);
+                      }
+                    } else {
+                      console.error(`❌ Ícone não encontrado: ${icon.src} (${iconResponse.status})`);
+                    }
+                  } catch (iconErr) {
+                    console.error(`❌ Erro ao validar ícone ${icon.src}:`, iconErr);
+                  }
+                }
+              }
             } else {
               console.error('❌ Erro ao carregar manifest.json:', manifestResponse.status);
             }
