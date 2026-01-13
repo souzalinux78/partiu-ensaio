@@ -27,29 +27,64 @@ const InstallPrompt = () => {
 
   // Função para verificar se já está instalado
   const checkIfInstalled = () => {
-    // Verificar display-mode standalone
+    // Verificar display-mode standalone (mais confiável)
     if (window.matchMedia('(display-mode: standalone)').matches) {
+      console.log('✅ PWA detectado: display-mode standalone');
       return true;
+    }
+
+    // Verificar se está sendo executado como PWA (sem barra de endereços)
+    if (window.navigator.standalone === true) {
+      console.log('✅ PWA detectado: navigator.standalone = true');
+      return true;
+    }
+
+    // Verificar se foi adicionado à tela inicial (Android - verificação adicional)
+    // Se não há barra de endereços visível e não está em modo navegador
+    const isInBrowser = window.location.href.includes('chrome://') || 
+                       window.location.href.includes('about:blank') ||
+                       document.referrer === '';
+    
+    // Se não está em navegador e não tem barra de endereços, provavelmente é PWA
+    if (!isInBrowser && window.navigator.standalone !== false) {
+      // Verificar se há referrer vazio (comum em PWAs)
+      if (window.matchMedia('(display-mode: fullscreen)').matches ||
+          window.matchMedia('(display-mode: minimal-ui)').matches) {
+        console.log('✅ PWA detectado: display-mode fullscreen ou minimal-ui');
+        return true;
+      }
     }
 
     // Verificar iOS standalone mode
     const isIOSDevice = detectIOS();
     if (isIOSDevice && ('standalone' in window.navigator) && window.navigator.standalone) {
+      console.log('✅ PWA detectado: iOS standalone mode');
       return true;
-    }
-
-    // Verificar se foi adicionado à tela inicial (Android)
-    if (window.navigator.standalone === false) {
-      return false;
     }
 
     return false;
   };
 
   useEffect(() => {
+    let installationCheckInterval = null;
+
+    // Verificar periodicamente se o PWA foi instalado
+    const checkInstallation = () => {
+      const mobile = detectMobile();
+      const ios = detectIOS();
+      const installed = checkIfInstalled();
+
+      setIsMobile(mobile);
+      setIsIOS(ios);
+      setIsInstalled(installed);
+
+      return installed;
+    };
+
+    // Verificar imediatamente
     const mobile = detectMobile();
     const ios = detectIOS();
-    const installed = checkIfInstalled();
+    const installed = checkInstallation();
 
     setIsMobile(mobile);
     setIsIOS(ios);
@@ -57,45 +92,130 @@ const InstallPrompt = () => {
 
     // Se já estiver instalado, não mostrar prompt
     if (installed) {
+      console.log('✅ PWA já está instalado - não mostrar prompt');
       return;
     }
 
-    // Verificar se o usuário já viu o prompt hoje
+    // Verificar periodicamente se foi instalado (a cada 2 segundos)
+    installationCheckInterval = setInterval(() => {
+      const isNowInstalled = checkInstallation();
+      if (isNowInstalled) {
+        setIsInstalled(true);
+        setShowPrompt(false);
+        if (installationCheckInterval) {
+          clearInterval(installationCheckInterval);
+        }
+      }
+    }, 2000);
+
+    // Verificar se o usuário já viu o prompt ou dispensou permanentemente
     const hasSeenPrompt = localStorage.getItem('pwa-install-prompt-seen');
-    const dismissedToday = localStorage.getItem('pwa-install-prompt-dismissed');
-    const today = new Date().toDateString();
-    const shouldShow = !hasSeenPrompt || (dismissedToday !== today);
+    const dismissedPermanently = localStorage.getItem('pwa-install-prompt-dismissed') === 'true';
+    
+    // Só mostrar se não foi visto e não foi dispensado
+    if (hasSeenPrompt || dismissedPermanently) {
+      console.log('ℹ️ Prompt já foi visto ou dispensado');
+      return;
+    }
 
     // Escutar evento beforeinstallprompt (Android/Chrome/Edge)
+    // Este é o evento PRINCIPAL que permite instalação automática
     const handleBeforeInstallPrompt = (e) => {
+      console.log('🎯 beforeinstallprompt capturado!');
       e.preventDefault();
       setDeferredPrompt(e);
       
-      // Mostrar prompt imediatamente em mobile, ou após delay em desktop
-      if (shouldShow) {
-        const delay = mobile ? 500 : 2000; // 0.5s em mobile, 2s em desktop
-        setTimeout(() => {
-          setShowPrompt(true);
-        }, delay);
-      }
+      // Mostrar prompt imediatamente quando o evento for capturado
+      const delay = mobile ? 1000 : 2000;
+      setTimeout(() => {
+        setShowPrompt(true);
+      }, delay);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
-    // Para iOS e outros dispositivos mobile, mostrar prompt mesmo sem beforeinstallprompt
-    if (mobile && shouldShow) {
-      // Mostrar imediatamente em mobile na primeira visita
-      const delay = ios ? 1000 : 800; // iOS precisa de um pouco mais de tempo
+    // Verificar se o Service Worker está ativo (necessário para beforeinstallprompt)
+    const checkServiceWorker = async () => {
+      if ('serviceWorker' in navigator) {
+        try {
+          // Aguardar Service Worker estar pronto
+          const registration = await navigator.serviceWorker.ready;
+          console.log('✅ Service Worker está ativo:', registration.active?.state);
+          console.log('✅ Service Worker scope:', registration.scope);
+          
+          // Verificar se o manifest está sendo carregado
+          try {
+            const manifestResponse = await fetch('/manifest.json');
+            if (manifestResponse.ok) {
+              const manifest = await manifestResponse.json();
+              console.log('✅ Manifest.json carregado:', manifest.name);
+              console.log('✅ Manifest display:', manifest.display);
+              console.log('✅ Manifest start_url:', manifest.start_url);
+            } else {
+              console.error('❌ Erro ao carregar manifest.json:', manifestResponse.status);
+            }
+          } catch (err) {
+            console.error('❌ Erro ao carregar manifest.json:', err);
+          }
+          
+          // Se o Service Worker está ativo, aguardar o beforeinstallprompt
+          // Se não aparecer em 5 segundos, pode ser que não seja instalável
+          setTimeout(() => {
+            if (!deferredPrompt && mobile && !ios) {
+              console.warn('⚠️ beforeinstallprompt não apareceu após 5 segundos');
+              console.warn('⚠️ Possíveis causas:');
+              console.warn('   1. Service Worker não está ativo');
+              console.warn('   2. Manifest.json não está correto');
+              console.warn('   3. PWA já foi instalado anteriormente');
+              console.warn('   4. Navegador não suporta beforeinstallprompt');
+              console.warn('   5. Site não está em HTTPS');
+            }
+          }, 5000);
+        } catch (error) {
+          console.error('❌ Erro ao verificar Service Worker:', error);
+          console.error('   Service Worker pode não estar registrado ainda');
+        }
+      } else {
+        console.error('❌ Service Worker não é suportado neste navegador');
+      }
+    };
+
+    // Verificar Service Worker após um pequeno delay para garantir que está registrado
+    setTimeout(() => {
+      checkServiceWorker();
+    }, 1000);
+
+    // Para iOS, não há beforeinstallprompt, então mostrar instruções manuais
+    // Mas só se não houver deferredPrompt disponível
+    if (ios && mobile) {
+      // Aguardar um pouco para ver se o beforeinstallprompt aparece
       setTimeout(() => {
-        setShowPrompt(true);
-      }, delay);
+        if (!deferredPrompt) {
+          // Se após 3 segundos não houver deferredPrompt, mostrar instruções para iOS
+          const delay = 3000;
+          setTimeout(() => {
+            if (!deferredPrompt) {
+              setShowPrompt(true);
+            }
+          }, delay);
+        }
+      }, 1000);
     }
 
     // Escutar evento appinstalled
     const handleAppInstalled = () => {
+      console.log('✅ PWA instalado com sucesso! Evento appinstalled disparado.');
       setIsInstalled(true);
       setShowPrompt(false);
+      setDeferredPrompt(null);
       localStorage.setItem('pwa-install-prompt-seen', 'true');
+      localStorage.setItem('pwa-install-prompt-dismissed', 'true');
+      
+      // Recarregar a página após instalação para garantir modo standalone
+      setTimeout(() => {
+        console.log('🔄 Recarregando página para ativar modo standalone...');
+        window.location.reload();
+      }, 1000);
     };
 
     window.addEventListener('appinstalled', handleAppInstalled);
@@ -103,62 +223,68 @@ const InstallPrompt = () => {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      if (installationCheckInterval) {
+        clearInterval(installationCheckInterval);
+      }
     };
   }, []);
 
   const handleInstallClick = async () => {
+    // Se não houver deferredPrompt, não mostrar alert - apenas fechar
+    // O beforeinstallprompt deve estar disponível para instalação automática
     if (!deferredPrompt) {
-      // Se não houver deferredPrompt, mostrar instruções específicas por dispositivo
+      console.warn('⚠️ deferredPrompt não disponível. Verifique se o Service Worker está registrado e o manifest.json está correto.');
+      
+      // Para iOS, mostrar instruções manuais
       if (isIOS) {
         alert('📱 Para instalar no iPhone/iPad:\n\n1. Toque no botão de compartilhar (quadrado com seta para cima)\n2. Role para baixo e selecione "Adicionar à Tela de Início"\n3. Toque em "Adicionar" no canto superior direito\n\n✨ O app aparecerá na sua tela inicial!');
-      } else if (isMobile) {
-        // Android ou outros mobile
-        const isChrome = /Chrome/.test(navigator.userAgent);
-        const isSamsung = /Samsung/.test(navigator.userAgent);
-        const isFirefox = /Firefox/.test(navigator.userAgent);
-        
-        if (isChrome || isSamsung) {
-          alert('📱 Para instalar no Android:\n\n1. Toque no menu (três pontos) no canto superior direito\n2. Selecione "Instalar aplicativo" ou "Adicionar à tela inicial"\n3. Confirme a instalação\n\n✨ O app aparecerá na sua tela inicial!');
-        } else if (isFirefox) {
-          alert('📱 Para instalar no Firefox:\n\n1. Toque no menu (três linhas) no canto superior direito\n2. Selecione "Página" → "Adicionar à Tela Inicial"\n3. Confirme a instalação\n\n✨ O app aparecerá na sua tela inicial!');
-        } else {
-          alert('📱 Para instalar:\n\n1. Abra o menu do navegador\n2. Procure por "Instalar aplicativo" ou "Adicionar à tela inicial"\n3. Siga as instruções na tela\n\n✨ O app aparecerá na sua tela inicial!');
-        }
       } else {
-        alert('💻 Para instalar no computador:\n\n1. Clique no ícone de instalação na barra de endereços (se disponível)\n2. Ou clique no menu (três pontos) → "Instalar aplicativo"\n\n✨ O app abrirá em uma janela própria!');
+        // Para Android, tentar verificar se há opção de instalação no menu
+        alert('📱 Para instalar:\n\n1. Toque no menu (três pontos) no canto superior direito\n2. Procure por "Instalar aplicativo" ou "Adicionar à tela inicial"\n3. Se não aparecer, o PWA pode não estar pronto para instalação\n\nVerifique se o Service Worker está ativo.');
       }
+      
       setShowPrompt(false);
       localStorage.setItem('pwa-install-prompt-seen', 'true');
       return;
     }
 
     try {
-      // Mostrar prompt de instalação nativo
-      deferredPrompt.prompt();
+      console.log('🚀 Iniciando instalação do PWA...');
+      
+      // Mostrar prompt de instalação nativo do navegador
+      await deferredPrompt.prompt();
 
       // Aguardar resposta do usuário
       const { outcome } = await deferredPrompt.userChoice;
 
+      console.log('📋 Resultado da instalação:', outcome);
+
       if (outcome === 'accepted') {
         console.log('✅ Usuário aceitou instalar o PWA');
         setIsInstalled(true);
+        setShowPrompt(false);
+        // O evento 'appinstalled' será disparado automaticamente
       } else {
         console.log('❌ Usuário recusou instalar o PWA');
+        setShowPrompt(false);
+        localStorage.setItem('pwa-install-prompt-seen', 'true');
       }
     } catch (error) {
-      console.error('Erro ao mostrar prompt de instalação:', error);
+      console.error('❌ Erro ao mostrar prompt de instalação:', error);
+      setShowPrompt(false);
+      localStorage.setItem('pwa-install-prompt-seen', 'true');
     }
 
+    // Limpar deferredPrompt após uso
     setDeferredPrompt(null);
-    setShowPrompt(false);
-    localStorage.setItem('pwa-install-prompt-seen', 'true');
   };
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    const today = new Date().toDateString();
-    localStorage.setItem('pwa-install-prompt-dismissed', today);
-    // Não marcar como "visto permanentemente", permite mostrar novamente amanhã
+    // Marcar como visto permanentemente quando o usuário fecha
+    localStorage.setItem('pwa-install-prompt-seen', 'true');
+    localStorage.setItem('pwa-install-prompt-dismissed', 'true');
+    // Não mostrar novamente até que o usuário limpe o localStorage
   };
 
   // Não mostrar se já estiver instalado

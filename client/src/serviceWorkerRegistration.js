@@ -16,20 +16,20 @@ export function register(config) {
       return;
     }
 
-    window.addEventListener('load', () => {
-      const swUrl = `${process.env.PUBLIC_URL}/service-worker.js`;
+    // Registrar imediatamente, não esperar pelo evento 'load'
+    const swUrl = `${process.env.PUBLIC_URL || ''}/service-worker.js`;
 
-      if (isLocalhost) {
-        checkValidServiceWorker(swUrl, config);
-        navigator.serviceWorker.ready.then(() => {
-          console.log(
-            'Este aplicativo web está sendo servido em cache por um service worker.'
-          );
-        });
-      } else {
-        registerValidSW(swUrl, config);
-      }
-    });
+    if (isLocalhost) {
+      checkValidServiceWorker(swUrl, config);
+      navigator.serviceWorker.ready.then(() => {
+        console.log(
+          '✅ Este aplicativo web está sendo servido em cache por um service worker.'
+        );
+      });
+    } else {
+      // Registrar imediatamente em produção
+      registerValidSW(swUrl, config);
+    }
   }
 }
 

@@ -12,29 +12,32 @@ root.render(
 );
 
 // Registrar Service Worker
-// Em produção, sempre registrar
-// Em desenvolvimento, verificar se está em localhost (não registrar para evitar problemas)
+// IMPORTANTE: O Service Worker DEVE estar registrado para o PWA funcionar corretamente
+// O beforeinstallprompt só é disparado se o Service Worker estiver ativo
 const isLocalhost = window.location.hostname === 'localhost' || 
                    window.location.hostname === '127.0.0.1' ||
                    window.location.hostname === '[::1]' ||
                    window.location.hostname.match(/^127(?:\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)){3}$/);
 
+// Sempre registrar o Service Worker, exceto em localhost explícito
 if (!isLocalhost) {
-  // Registrar em produção ou quando não estiver em localhost
+  console.log('🔧 Registrando Service Worker para PWA...');
   serviceWorkerRegistration.register({
     onUpdate: (registration) => {
       // Quando há uma nova versão disponível
-      console.log('Nova versão do PWA disponível!');
+      console.log('🔄 Nova versão do PWA disponível!');
       if (window.confirm('Nova versão disponível! Deseja atualizar agora?')) {
         registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
         window.location.reload();
       }
     },
     onSuccess: (registration) => {
-      console.log('✅ PWA registrado com sucesso!');
+      console.log('✅ Service Worker registrado com sucesso!');
+      console.log('✅ PWA pronto para instalação!');
     },
   });
 } else {
+  console.log('⚠️ Localhost detectado - Service Worker desabilitado para desenvolvimento');
   // Em desenvolvimento local, desabilitar service worker para evitar cache
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.getRegistrations().then(registrations => {
