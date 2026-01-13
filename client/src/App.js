@@ -7,6 +7,7 @@ import DashboardEncarregado from './components/DashboardEncarregado';
 import DashboardAdmin from './components/DashboardAdmin';
 import DashboardMusico from './components/DashboardMusico';
 import EnsaiosPublicos from './components/EnsaiosPublicos';
+import InstallPrompt from './components/InstallPrompt';
 import { getAuthToken, getUser } from './utils/auth';
 
 function App() {
@@ -40,6 +41,7 @@ function App() {
 
   return (
     <Router>
+      <InstallPrompt />
       <Routes>
         <Route path="/" element={<EnsaiosPublicos />} />
         <Route 

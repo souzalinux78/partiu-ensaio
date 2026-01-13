@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Ícones PWA - Partiu Ensaio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 800px;
+            width: 100%;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2rem;
+        }
+        .icons-preview {
+            display: flex;
+            gap: 30px;
+            justify-content: center;
+            margin: 30px 0;
+            flex-wrap: wrap;
+        }
+        .icon-preview {
+            text-align: center;
+        }
+        .icon-preview h3 {
+            margin-bottom: 10px;
+            font-size: 1rem;
+        }
+        canvas {
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 12px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+        }
+        .buttons {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 30px;
+        }
+        button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            background: white;
+            color: #667eea;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        }
+        button:active {
+            transform: translateY(0);
+        }
+        .instructions {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 12px;
+            margin-top: 30px;
+            line-height: 1.6;
+        }
+        .instructions h3 {
+            margin-bottom: 10px;
+        }
+        .instructions ol {
+            margin-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎵 Gerador de Ícones PWA</h1>
+        <p style="text-align: center; margin-bottom: 20px; opacity: 0.9;">
+            Partiu Ensaio - Agenda Musical
+        </p>
+        
+        <div class="icons-preview">
+            <div class="icon-preview">
+                <h3>192x192</h3>
+                <canvas id="icon192" width="192" height="192"></canvas>
+            </div>
+            <div class="icon-preview">
+                <h3>512x512</h3>
+                <canvas id="icon512" width="512" height="512"></canvas>
+            </div>
+        </div>
+        
+        <div class="buttons">
+            <button onclick="generateIcons()">🔄 Gerar Ícones</button>
+            <button onclick="downloadIcon('icon192', 'icon-192.png')">📥 Download 192x192</button>
+            <button onclick="downloadIcon('icon512', 'icon-512.png')">📥 Download 512x512</button>
+            <button onclick="downloadAll()">📦 Download Todos</button>
+        </div>
+        
+        <div class="instructions">
+            <h3>📋 Instruções:</h3>
+            <ol>
+                <li>Clique em "Gerar Ícones" para criar os ícones</li>
+                <li>Baixe os ícones usando os botões acima</li>
+                <li>Salve os arquivos na pasta <code>client/public/</code> com os nomes:
+                    <ul style="margin-top: 5px; margin-left: 20px;">
+                        <li><code>icon-192.png</code></li>
+                        <li><code>icon-512.png</code></li>
+                    </ul>
+                </li>
+                <li>Recompile o frontend: <code>npm run build</code></li>
+            </ol>
+        </div>
+    </div>
+
+    <script>
+        function generateIcons() {
+            // Ícone 192x192
+            const canvas192 = document.getElementById('icon192');
+            const ctx192 = canvas192.getContext('2d');
+            
+            // Gradiente de fundo
+            const gradient192 = ctx192.createLinearGradient(0, 0, 192, 192);
+            gradient192.addColorStop(0, '#667eea');
+            gradient192.addColorStop(1, '#764ba2');
+            ctx192.fillStyle = gradient192;
+            ctx192.fillRect(0, 0, 192, 192);
+            
+            // Sombra do texto
+            ctx192.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx192.shadowBlur = 10;
+            ctx192.shadowOffsetX = 2;
+            ctx192.shadowOffsetY = 2;
+            
+            // Texto "PE"
+            ctx192.fillStyle = 'white';
+            ctx192.font = 'bold 80px Arial';
+            ctx192.textAlign = 'center';
+            ctx192.textBaseline = 'middle';
+            ctx192.fillText('PE', 96, 96);
+            
+            // Ícone 512x512
+            const canvas512 = document.getElementById('icon512');
+            const ctx512 = canvas512.getContext('2d');
+            
+            // Gradiente de fundo
+            const gradient512 = ctx512.createLinearGradient(0, 0, 512, 512);
+            gradient512.addColorStop(0, '#667eea');
+            gradient512.addColorStop(1, '#764ba2');
+            ctx512.fillStyle = gradient512;
+            ctx512.fillRect(0, 0, 512, 512);
+            
+            // Sombra do texto
+            ctx512.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx512.shadowBlur = 20;
+            ctx512.shadowOffsetX = 4;
+            ctx512.shadowOffsetY = 4;
+            
+            // Texto "PE"
+            ctx512.fillStyle = 'white';
+            ctx512.font = 'bold 200px Arial';
+            ctx512.textAlign = 'center';
+            ctx512.textBaseline = 'middle';
+            ctx512.fillText('PE', 256, 256);
+            
+            console.log('✅ Ícones gerados com sucesso!');
+        }
+        
+        function downloadIcon(canvasId, filename) {
+            const canvas = document.getElementById(canvasId);
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+            console.log(`✅ ${filename} baixado!`);
+        }
+        
+        function downloadAll() {
+            downloadIcon('icon192', 'icon-192.png');
+            setTimeout(() => {
+                downloadIcon('icon512', 'icon-512.png');
+            }, 500);
+        }
+        
+        // Gerar automaticamente ao carregar
+        window.onload = generateIcons;
+    </script>
+</body>
+</html>
