@@ -388,48 +388,55 @@ const EnsaiosPublicos = () => {
               <div className="ensaios-grid">
                 {ensaiosOrdenados.map((ensaio) => (
                   <div key={ensaio.id} className="ensaio-card">
-                    {ensaio.foto_local && (
-                      <div className="ensaio-image">
-                        <img
-                          src={`${getBaseUrl()}${ensaio.foto_local}`}
-                          alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
-                          loading="lazy"
-                          onError={(e) => {
-                            const imgUrl = `${getBaseUrl()}${ensaio.foto_local}`;
-                            const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(
-                              navigator.userAgent || navigator.vendor || window.opera
-                            ) || window.innerWidth <= 768;
-                            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                                 window.navigator.standalone;
-                            console.error('❌ Erro ao carregar imagem:', imgUrl);
-                            console.error('   getBaseUrl():', getBaseUrl());
-                            console.error('   foto_local:', ensaio.foto_local);
-                            console.error('   URL completa:', imgUrl);
-                            console.error('   Dispositivo:', isMobile ? 'Mobile' : 'Desktop');
-                            console.error('   Modo:', isStandalone ? 'PWA Standalone' : 'Navegador');
-                            console.error('   User Agent:', navigator.userAgent);
-                            console.error('   Elemento img:', e.target);
-                            
-                            // Tentar recarregar com timestamp para forçar bypass do cache
-                            const retryUrl = `${imgUrl}?t=${Date.now()}`;
-                            console.log('🔄 Tentando recarregar com timestamp:', retryUrl);
-                            e.target.src = retryUrl;
-                          }}
-                          onLoad={(e) => {
-                            const imgUrl = `${getBaseUrl()}${ensaio.foto_local}`;
-                            const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(
-                              navigator.userAgent || navigator.vendor || window.opera
-                            ) || window.innerWidth <= 768;
-                            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                                                 window.navigator.standalone;
-                            console.log('✅ Imagem carregada com sucesso:', imgUrl);
-                            console.log('   Dimensões:', e.target.naturalWidth, 'x', e.target.naturalHeight);
-                            console.log('   Dispositivo:', isMobile ? 'Mobile' : 'Desktop');
-                            console.log('   Modo:', isStandalone ? 'PWA Standalone' : 'Navegador');
-                          }}
-                        />
-                      </div>
-                    )}
+                    {ensaio.foto_local && (() => {
+                      // Detectar mobile para usar timestamp desde o início
+                      const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(
+                        navigator.userAgent || navigator.vendor || window.opera
+                      ) || window.innerWidth <= 768;
+                      
+                      // Em mobile, sempre adicionar timestamp para forçar bypass do cache
+                      const baseUrl = getBaseUrl();
+                      const imagePath = ensaio.foto_local;
+                      const imageUrl = isMobile 
+                        ? `${baseUrl}${imagePath}?t=${Date.now()}&v=1`
+                        : `${baseUrl}${imagePath}`;
+                      
+                      return (
+                        <div className="ensaio-image">
+                          <img
+                            key={`img-${ensaio.id}-${isMobile ? 'm' : 'd'}`}
+                            src={imageUrl}
+                            alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
+                            loading="lazy"
+                            onError={(e) => {
+                              const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                                   window.navigator.standalone;
+                              console.error('❌ Erro ao carregar imagem:', imageUrl);
+                              console.error('   getBaseUrl():', baseUrl);
+                              console.error('   foto_local:', imagePath);
+                              console.error('   URL completa:', imageUrl);
+                              console.error('   Dispositivo:', isMobile ? 'Mobile' : 'Desktop');
+                              console.error('   Modo:', isStandalone ? 'PWA Standalone' : 'Navegador');
+                              console.error('   User Agent:', navigator.userAgent);
+                              console.error('   Elemento img:', e.target);
+                              
+                              // Tentar recarregar com novo timestamp
+                              const retryUrl = `${baseUrl}${imagePath}?t=${Date.now()}&retry=1`;
+                              console.log('🔄 Tentando recarregar com novo timestamp:', retryUrl);
+                              e.target.src = retryUrl;
+                            }}
+                            onLoad={(e) => {
+                              const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                                   window.navigator.standalone;
+                              console.log('✅ Imagem carregada com sucesso:', imageUrl);
+                              console.log('   Dimensões:', e.target.naturalWidth, 'x', e.target.naturalHeight);
+                              console.log('   Dispositivo:', isMobile ? 'Mobile' : 'Desktop');
+                              console.log('   Modo:', isStandalone ? 'PWA Standalone' : 'Navegador');
+                            }}
+                          />
+                        </div>
+                      );
+                    })()}
                     <div className="ensaio-content">
                       <div className="ensaio-header">
                         <h3>{ensaio.nome_igreja || ensaio.local || 'Sem nome'}</h3>
