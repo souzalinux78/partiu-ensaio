@@ -396,17 +396,36 @@ const EnsaiosPublicos = () => {
                           loading="lazy"
                           onError={(e) => {
                             const imgUrl = `${getBaseUrl()}${ensaio.foto_local}`;
+                            const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(
+                              navigator.userAgent || navigator.vendor || window.opera
+                            ) || window.innerWidth <= 768;
+                            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                                 window.navigator.standalone;
                             console.error('❌ Erro ao carregar imagem:', imgUrl);
                             console.error('   getBaseUrl():', getBaseUrl());
                             console.error('   foto_local:', ensaio.foto_local);
                             console.error('   URL completa:', imgUrl);
+                            console.error('   Dispositivo:', isMobile ? 'Mobile' : 'Desktop');
+                            console.error('   Modo:', isStandalone ? 'PWA Standalone' : 'Navegador');
+                            console.error('   User Agent:', navigator.userAgent);
                             console.error('   Elemento img:', e.target);
-                            e.target.style.display = 'none';
+                            
+                            // Tentar recarregar com timestamp para forçar bypass do cache
+                            const retryUrl = `${imgUrl}?t=${Date.now()}`;
+                            console.log('🔄 Tentando recarregar com timestamp:', retryUrl);
+                            e.target.src = retryUrl;
                           }}
                           onLoad={(e) => {
                             const imgUrl = `${getBaseUrl()}${ensaio.foto_local}`;
+                            const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(
+                              navigator.userAgent || navigator.vendor || window.opera
+                            ) || window.innerWidth <= 768;
+                            const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                                                 window.navigator.standalone;
                             console.log('✅ Imagem carregada com sucesso:', imgUrl);
                             console.log('   Dimensões:', e.target.naturalWidth, 'x', e.target.naturalHeight);
+                            console.log('   Dispositivo:', isMobile ? 'Mobile' : 'Desktop');
+                            console.log('   Modo:', isStandalone ? 'PWA Standalone' : 'Navegador');
                           }}
                         />
                       </div>

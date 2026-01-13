@@ -33,24 +33,31 @@ export const getBaseUrl = () => {
     return baseUrl;
   }
   
+  // Detectar se é dispositivo móvel
+  const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(
+    navigator.userAgent || navigator.vendor || window.opera
+  ) || window.innerWidth <= 768;
+  
   // Verificar se está rodando como PWA (standalone mode)
   const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
                        window.navigator.standalone || 
                        document.referrer.includes('android-app://');
   
-  // Em produção, sempre usar URL absoluta para garantir que funcione no PWA
-  // URLs relativas podem não funcionar corretamente no PWA standalone
-  if (isStandalone) {
+  // Em produção, SEMPRE usar URL absoluta para:
+  // 1. PWA standalone (obrigatório)
+  // 2. Dispositivos móveis (para evitar problemas de cache/Service Worker)
+  // URLs relativas podem não funcionar corretamente no mobile/PWA
+  if (isStandalone || isMobile) {
     const protocol = window.location.protocol;
     const hostname = window.location.hostname;
     const port = window.location.port ? `:${window.location.port}` : '';
     const baseUrl = `${protocol}//${hostname}${port}`;
-    console.log('🖼️ getBaseUrl (PWA):', baseUrl);
+    console.log(`🖼️ getBaseUrl (${isStandalone ? 'PWA' : 'mobile'}):`, baseUrl);
     return baseUrl;
   }
   
-  // Se não for PWA em produção, usar URL relativa (mesmo domínio)
-  console.log('🖼️ getBaseUrl (web):', '(relativo)');
+  // Se não for mobile nem PWA em produção, usar URL relativa (mesmo domínio)
+  console.log('🖼️ getBaseUrl (web desktop):', '(relativo)');
   return '';
 };
 
