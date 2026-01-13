@@ -163,19 +163,9 @@ export const setupNotificationClickListener = () => {
     });
   }
 
-  // Listener para notificações diretas (sem service worker)
-  if ('Notification' in window) {
-    self.addEventListener('notificationclick', (event) => {
-      event.notification.close();
-      
-      const data = event.notification.data;
-      if (data && data.url) {
-        event.waitUntil(
-          clients.openWindow(data.url)
-        );
-      }
-    });
-  }
+  // Nota: O listener 'notificationclick' deve ser registrado no Service Worker,
+  // não no contexto do navegador. O Service Worker já está configurado em
+  // client/public/service-worker.js para lidar com cliques em notificações.
 };
 
 // Inicializar sistema de notificações
