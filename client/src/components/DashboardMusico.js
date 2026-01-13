@@ -135,20 +135,30 @@ const DashboardMusico = ({ user, onLogout }) => {
                         <span className="status-badge status-aprovado">Aprovado</span>
                       </div>
                       <div className="ensaio-info">
-                        {ensaio.proxima_data && (
-                          <p className="data-destaque">
-                            📅 {new Date(ensaio.proxima_data + 'T00:00:00').toLocaleDateString('pt-BR', { 
-                              weekday: 'long', 
-                              year: 'numeric', 
-                              month: 'long', 
-                              day: 'numeric',
-                              timeZone: 'America/Sao_Paulo'
-                            })}
-                            {ensaio.horario && (
-                              <span> às {ensaio.horario}</span>
-                            )}
-                          </p>
-                        )}
+                        {ensaio.proxima_data && (() => {
+                          try {
+                            const dataObj = new Date(ensaio.proxima_data + 'T00:00:00');
+                            if (isNaN(dataObj.getTime())) {
+                              return null;
+                            }
+                            return (
+                              <p className="data-destaque">
+                                📅 {dataObj.toLocaleDateString('pt-BR', { 
+                                  weekday: 'long', 
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric',
+                                  timeZone: 'America/Sao_Paulo'
+                                })}
+                                {ensaio.horario && (
+                                  <span> às {ensaio.horario}</span>
+                                )}
+                              </p>
+                            );
+                          } catch (e) {
+                            return null;
+                          }
+                        })()}
                         <p><strong>Encarregado:</strong> {ensaio.nome_encarregado || ensaio.encarregado_name || 'N/A'}</p>
                         {ensaio.instrumento && (
                           <p>

@@ -35,17 +35,28 @@ self.addEventListener('activate', (event) => {
 
 // Estratégia: Network First, fallback para Cache
 self.addEventListener('fetch', (event) => {
+  // Ignorar completamente requisições que não são GET
+  if (event.request.method !== 'GET') {
+    return; // Deixa o navegador lidar normalmente
+  }
+  
+  // Ignorar completamente requisições de API
+  if (event.request.url.includes('/api/')) {
+    return; // Deixa o navegador lidar normalmente
+  }
+  
+  // Só interceptar requisições GET de recursos estáticos
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clonar a resposta
-        const responseToCache = response.clone();
-        
-        caches.open(CACHE_NAME)
-          .then((cache) => {
-            cache.put(event.request, responseToCache);
-          });
-        
+        // Só fazer cache de GET com status 200 e que não sejam API
+        if (response.status === 200 && !event.request.url.includes('/api/')) {
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME)
+            .then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+        }
         return response;
       })
       .catch(() => {

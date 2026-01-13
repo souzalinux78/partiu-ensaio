@@ -2,7 +2,27 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
-import * as serviceWorkerRegistration from './serviceWorkerRegistration';
+
+// DESABILITAR service worker COMPLETAMENTE - sempre desregistrar
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then(registrations => {
+    registrations.forEach(registration => {
+      registration.unregister().then(() => {
+        console.log('✅ Service worker desregistrado');
+      });
+    });
+  });
+  
+  // Limpar todos os caches
+  if ('caches' in window) {
+    caches.keys().then(cacheNames => {
+      cacheNames.forEach(cacheName => {
+        caches.delete(cacheName);
+        console.log('✅ Cache deletado:', cacheName);
+      });
+    });
+  }
+}
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -10,17 +30,3 @@ root.render(
     <App />
   </React.StrictMode>
 );
-
-// Registrar o service worker para PWA
-serviceWorkerRegistration.register({
-  onUpdate: (registration) => {
-    // Quando há uma nova versão disponível
-    if (window.confirm('Nova versão disponível! Deseja atualizar?')) {
-      registration.waiting?.postMessage({ type: 'SKIP_WAITING' });
-      window.location.reload();
-    }
-  },
-  onSuccess: () => {
-    console.log('PWA instalado com sucesso!');
-  }
-});

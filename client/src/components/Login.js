@@ -74,16 +74,16 @@ const Login = ({ onLogin }) => {
             {loading ? 'Entrando...' : 'Entrar'}
           </button>
         </form>
-        <p className="auth-link">
-          Não tem uma conta? 
+        <div className="auth-link">
+          <p>Não tem uma conta?</p>
           <div className="register-links">
             <Link to="/register">Cadastre-se como Encarregado</Link>
             <Link to="/register-musico">Cadastre-se como Músico</Link>
           </div>
-        </p>
-        <p className="auth-link">
+        </div>
+        <div className="auth-link">
           <Link to="/">Ver ensaios públicos</Link>
-        </p>
+        </div>
       </div>
     </div>
   );

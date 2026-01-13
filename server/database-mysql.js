@@ -4,10 +4,13 @@ const fs = require('fs');
 const path = require('path');
 
 // Configuração do banco MySQL
+// Carregar variáveis de ambiente se não estiverem definidas
+require('dotenv').config();
+
 const dbConfig = {
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
-  password: process.env.DB_PASSWORD || '',
+  password: process.env.DB_PASSWORD || 'FLoc25GD!',
   database: process.env.DB_NAME || 'partiu_ensaio',
   waitForConnections: true,
   connectionLimit: 10,
@@ -194,59 +197,167 @@ const createDefaultAdmin = async () => {
 
 // Wrapper para compatibilidade com código SQLite
 // Converte callbacks para promises e mantém a mesma interface
-const dbWrapper = {
-  get: (query, params = [], callback) => {
-    pool.execute(query, params)
-      .then(([rows]) => {
-        callback(null, rows[0] || null);
-      })
-      .catch((err) => {
-        callback(err, null);
-      });
-  },
-  
-  all: (query, params = [], callback) => {
-    pool.execute(query, params)
-      .then(([rows]) => {
-        callback(null, rows);
-      })
-      .catch((err) => {
-        callback(err, null);
-      });
-  },
-  
-  run: (query, params = [], callback) => {
-    pool.execute(query, params)
-      .then(([result]) => {
-        // Criar objeto compatível com SQLite
-        const context = {
-          lastID: result.insertId,
-          changes: result.affectedRows
-        };
-        
-        if (callback) {
-          // Se callback tem 1 parâmetro, é função de erro
-          // Se tem 2, é (err, result)
-          if (callback.length === 1) {
-            callback(context);
-          } else {
-            callback(null, context);
-          }
-        }
-      })
-      .catch((err) => {
-        if (callback) {
-          if (callback.length === 1) {
-            callback(err);
-          } else {
-            callback(err, null);
-          }
-        }
-      });
+const getDb = () => {
+  if (!pool) {
+    console.error('❌ ERRO: Pool MySQL não inicializado!');
+    throw new Error('Banco de dados não inicializado. Chame init() primeiro.');
   }
+  
+  return {
+    get: (query, params = [], callback) => {
+      pool.execute(query, params)
+        .then(([rows]) => {
+          const row = rows[0] || null;
+          // Normalizar data DATE do MySQL para formato YYYY-MM-DD
+          if (row && row.proxima_data) {
+            if (row.proxima_data instanceof Date) {
+              const ano = row.proxima_data.getFullYear();
+              const mes = String(row.proxima_data.getMonth() + 1).padStart(2, '0');
+              const dia = String(row.proxima_data.getDate()).padStart(2, '0');
+              row.proxima_data = `${ano}-${mes}-${dia}`;
+            } else if (typeof row.proxima_data === 'string') {
+              // Se vier como ISO string ou outro formato, converter para YYYY-MM-DD
+              if (row.proxima_data.includes('T') || row.proxima_data.includes(' ')) {
+                const dataObj = new Date(row.proxima_data);
+                if (!isNaN(dataObj.getTime())) {
+                  const ano = dataObj.getFullYear();
+                  const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+                  const dia = String(dataObj.getDate()).padStart(2, '0');
+                  row.proxima_data = `${ano}-${mes}-${dia}`;
+                }
+              }
+              // Se já estiver no formato YYYY-MM-DD, manter
+            }
+          }
+          // Também normalizar data_ensaio se existir
+          if (row && row.data_ensaio) {
+            if (row.data_ensaio instanceof Date) {
+              const ano = row.data_ensaio.getFullYear();
+              const mes = String(row.data_ensaio.getMonth() + 1).padStart(2, '0');
+              const dia = String(row.data_ensaio.getDate()).padStart(2, '0');
+              row.data_ensaio = `${ano}-${mes}-${dia}`;
+            } else if (typeof row.data_ensaio === 'string' && (row.data_ensaio.includes('T') || row.data_ensaio.includes(' '))) {
+              const dataObj = new Date(row.data_ensaio);
+              if (!isNaN(dataObj.getTime())) {
+                const ano = dataObj.getFullYear();
+                const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+                const dia = String(dataObj.getDate()).padStart(2, '0');
+                row.data_ensaio = `${ano}-${mes}-${dia}`;
+              }
+            }
+          }
+          callback(null, row);
+        })
+        .catch((err) => {
+          console.error('Erro na query get:', err.message);
+          callback(err, null);
+        });
+    },
+    
+    all: (query, params = [], callback) => {
+      pool.execute(query, params)
+        .then(([rows]) => {
+          // Normalizar datas DATE do MySQL para formato YYYY-MM-DD
+          const rowsNormalizados = rows.map(row => {
+            if (row && row.proxima_data) {
+              const tipoOriginal = typeof row.proxima_data;
+              const valorOriginal = row.proxima_data;
+              
+              if (row.proxima_data instanceof Date) {
+                const ano = row.proxima_data.getFullYear();
+                const mes = String(row.proxima_data.getMonth() + 1).padStart(2, '0');
+                const dia = String(row.proxima_data.getDate()).padStart(2, '0');
+                row.proxima_data = `${ano}-${mes}-${dia}`;
+                console.log(`[DB-WRAPPER] Normalizado Date para string: ${valorOriginal} -> ${row.proxima_data}`);
+              } else if (typeof row.proxima_data === 'string') {
+                // Se vier como ISO string ou outro formato, converter para YYYY-MM-DD
+                if (row.proxima_data.includes('T') || row.proxima_data.includes(' ')) {
+                  const dataObj = new Date(row.proxima_data);
+                  if (!isNaN(dataObj.getTime())) {
+                    const ano = dataObj.getFullYear();
+                    const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+                    const dia = String(dataObj.getDate()).padStart(2, '0');
+                    row.proxima_data = `${ano}-${mes}-${dia}`;
+                    console.log(`[DB-WRAPPER] Normalizado ISO string para YYYY-MM-DD: ${valorOriginal} -> ${row.proxima_data}`);
+                  }
+                } else {
+                  console.log(`[DB-WRAPPER] proxima_data já está no formato correto: ${row.proxima_data}`);
+                }
+                // Se já estiver no formato YYYY-MM-DD, manter
+              } else {
+                console.warn(`[DB-WRAPPER] Tipo inesperado de proxima_data: ${tipoOriginal}, valor: ${valorOriginal}`);
+              }
+            } else if (row && !row.proxima_data) {
+              console.log(`[DB-WRAPPER] Ensaio ${row.id} não tem proxima_data`);
+            }
+            // Também normalizar data_ensaio se existir
+            if (row && row.data_ensaio) {
+              if (row.data_ensaio instanceof Date) {
+                const ano = row.data_ensaio.getFullYear();
+                const mes = String(row.data_ensaio.getMonth() + 1).padStart(2, '0');
+                const dia = String(row.data_ensaio.getDate()).padStart(2, '0');
+                row.data_ensaio = `${ano}-${mes}-${dia}`;
+              } else if (typeof row.data_ensaio === 'string' && (row.data_ensaio.includes('T') || row.data_ensaio.includes(' '))) {
+                const dataObj = new Date(row.data_ensaio);
+                if (!isNaN(dataObj.getTime())) {
+                  const ano = dataObj.getFullYear();
+                  const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+                  const dia = String(dataObj.getDate()).padStart(2, '0');
+                  row.data_ensaio = `${ano}-${mes}-${dia}`;
+                }
+              }
+            }
+            return row;
+          });
+          callback(null, rowsNormalizados);
+        })
+        .catch((err) => {
+          console.error('Erro na query all:', err.message);
+          callback(err, null);
+        });
+    },
+    
+    run: (query, params = [], callback) => {
+      pool.execute(query, params)
+        .then(([result]) => {
+          // Criar objeto compatível com SQLite
+          const context = {
+            lastID: result.insertId,
+            changes: result.affectedRows
+          };
+          
+          if (callback) {
+            // Verificar assinatura do callback
+            // SQLite usa: function(err) ou function(this) onde this.lastID existe
+            // Vamos suportar ambos os formatos
+            if (callback.length === 1) {
+              // Callback com 1 parâmetro - passar contexto como 'this'
+              callback.call(context, null);
+            } else if (callback.length === 2) {
+              // Callback com 2 parâmetros - (err, result)
+              callback(null, context);
+            } else {
+              // Callback sem parâmetros ou formato desconhecido
+              callback.call(context);
+            }
+          }
+        })
+        .catch((err) => {
+          console.error('Erro na query run:', err.message);
+          if (callback) {
+            if (callback.length === 1) {
+              // Passar erro como 'this' não faz sentido, passar como primeiro parâmetro
+              callback(err);
+            } else if (callback.length === 2) {
+              callback(err, null);
+            } else {
+              callback(err);
+            }
+          }
+        });
+    }
+  };
 };
-
-const getDb = () => dbWrapper;
 
 module.exports = {
   init,

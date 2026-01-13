@@ -1,5 +1,5 @@
 const axios = require('axios');
-const { getDb } = require('../database');
+const { getDb } = require('../database-mysql');
 
 const WEBHOOK_URL = 'https://webhook.automatizeonline.com.br/webhook/cadastro-ensaio';
 

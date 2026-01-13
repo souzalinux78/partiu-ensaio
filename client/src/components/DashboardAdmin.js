@@ -271,9 +271,17 @@ const DashboardAdmin = ({ user, onLogout }) => {
               )}
             </p>
           )}
-          {ensaio.proxima_data && (
-            <p><strong>📅 Próxima data:</strong> {new Date(ensaio.proxima_data + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
-          )}
+          {ensaio.proxima_data && (() => {
+            try {
+              const dataObj = new Date(ensaio.proxima_data + 'T00:00:00');
+              if (isNaN(dataObj.getTime())) {
+                return null;
+              }
+              return <p><strong>📅 Próxima data:</strong> {dataObj.toLocaleDateString('pt-BR')}</p>;
+            } catch (e) {
+              return null;
+            }
+          })()}
           <p><strong>Horário:</strong> {ensaio.horario}</p>
           <p><strong>Igreja:</strong> {ensaio.nome_igreja || ensaio.local || 'N/A'}</p>
           <p>

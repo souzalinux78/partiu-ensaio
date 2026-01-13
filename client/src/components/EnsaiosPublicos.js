@@ -56,15 +56,22 @@ const EnsaiosPublicos = () => {
     const ensaiosFiltrados = listaParaFiltrar.filter(ensaio => {
       // Pesquisar por data
       if (ensaio.proxima_data) {
-        const dataFormatada = new Date(ensaio.proxima_data + 'T00:00:00').toLocaleDateString('pt-BR', {
-          weekday: 'long',
-          year: 'numeric',
-          month: 'long',
-          day: 'numeric',
-          timeZone: 'America/Sao_Paulo'
-        });
-        if (dataFormatada.toLowerCase().includes(termoLower)) {
-          return true;
+        try {
+          const dataObj = new Date(ensaio.proxima_data + 'T00:00:00');
+          if (!isNaN(dataObj.getTime())) {
+            const dataFormatada = dataObj.toLocaleDateString('pt-BR', {
+              weekday: 'long',
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric',
+              timeZone: 'America/Sao_Paulo'
+            });
+            if (dataFormatada.toLowerCase().includes(termoLower)) {
+              return true;
+            }
+          }
+        } catch (e) {
+          // Ignorar erro de data inválida
         }
         // Também pesquisar pela data no formato YYYY-MM-DD
         if (ensaio.proxima_data.toLowerCase().includes(termoLower)) {
@@ -273,20 +280,30 @@ const EnsaiosPublicos = () => {
                         <span className="status-badge status-aprovado">Aprovado</span>
                       </div>
                       <div className="ensaio-info">
-                        {ensaio.proxima_data && (
-                          <p className="data-destaque">
-                            📅 {new Date(ensaio.proxima_data + 'T00:00:00').toLocaleDateString('pt-BR', { 
-                              weekday: 'long', 
-                              year: 'numeric', 
-                              month: 'long', 
-                              day: 'numeric',
-                              timeZone: 'America/Sao_Paulo'
-                            })}
-                            {ensaio.horario && (
-                              <span> às {ensaio.horario}</span>
-                            )}
-                          </p>
-                        )}
+                        {ensaio.proxima_data && (() => {
+                          try {
+                            const dataObj = new Date(ensaio.proxima_data + 'T00:00:00');
+                            if (isNaN(dataObj.getTime())) {
+                              return null;
+                            }
+                            return (
+                              <p className="data-destaque">
+                                📅 {dataObj.toLocaleDateString('pt-BR', { 
+                                  weekday: 'long', 
+                                  year: 'numeric', 
+                                  month: 'long', 
+                                  day: 'numeric',
+                                  timeZone: 'America/Sao_Paulo'
+                                })}
+                                {ensaio.horario && (
+                                  <span> às {ensaio.horario}</span>
+                                )}
+                              </p>
+                            );
+                          } catch (e) {
+                            return null;
+                          }
+                        })()}
                         <p><strong>Encarregado:</strong> {ensaio.nome_encarregado || ensaio.encarregado_name || 'N/A'}</p>
                         <p><strong>Tipo:</strong> {ensaio.tipo ? ensaio.tipo.charAt(0).toUpperCase() + ensaio.tipo.slice(1) : 'N/A'}</p>
                         {ensaio.dia_semana && (

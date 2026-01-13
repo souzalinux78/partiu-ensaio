@@ -3,7 +3,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
-const { getDb } = require('../database');
+const { getDb } = require('../database-mysql');
 const { authenticate, requireAdmin, requireEncarregado } = require('../middleware/auth');
 const { calcularProximaData, estaDentroDe7Dias, deveAparecer, calcularOcorrenciasFuturas } = require('../utils/dateCalculator');
 
@@ -321,7 +321,83 @@ router.get('/meus', authenticate, requireEncarregado, (req, res) => {
       if (err) {
         return res.status(500).json({ error: 'Erro ao buscar ensaios' });
       }
-      res.json(ensaios);
+      
+      // Garantir que ensaios com dia_semana e semana_mes tenham proxima_data calculada
+      // Sempre recalcular para garantir que está atualizada
+      console.log(`[ROUTE /meus] Processando ${ensaios.length} ensaios`);
+      
+      const ensaiosComData = ensaios.map(ensaio => {
+        console.log(`[ROUTE /meus] Ensaio ${ensaio.id} ANTES:`, {
+          dia_semana: ensaio.dia_semana,
+          semana_mes: ensaio.semana_mes,
+          proxima_data: ensaio.proxima_data,
+          tipo_proxima_data: typeof ensaio.proxima_data,
+          isDate: ensaio.proxima_data instanceof Date
+        });
+        
+        // Se o ensaio tem dia_semana e semana_mes, sempre recalcular a próxima data
+        if (ensaio.dia_semana && ensaio.semana_mes !== null && ensaio.semana_mes !== undefined) {
+          // Normalizar dia_semana para minúsculas (pode vir com capitalização diferente)
+          const diaSemanaNormalizado = ensaio.dia_semana.toLowerCase();
+          const novaProximaData = calcularProximaData(diaSemanaNormalizado, parseInt(ensaio.semana_mes));
+          
+          console.log(`[ROUTE /meus] Ensaio ${ensaio.id}: dia_semana="${ensaio.dia_semana}" -> "${diaSemanaNormalizado}", semana_mes=${ensaio.semana_mes}, calculado="${novaProximaData}"`);
+          
+          if (novaProximaData) {
+            // Atualizar no banco de dados (assíncrono, mas não bloqueia a resposta)
+            db.run(
+              'UPDATE ensaios SET proxima_data = ? WHERE id = ?',
+              [novaProximaData, ensaio.id],
+              (updateErr) => {
+                if (updateErr) {
+                  console.error('Erro ao atualizar proxima_data:', updateErr);
+                } else {
+                  console.log(`✅ Próxima data atualizada para ensaio ${ensaio.id}: ${novaProximaData}`);
+                }
+              }
+            );
+            // Atualizar o objeto que será retornado (garantir formato string YYYY-MM-DD)
+            ensaio.proxima_data = novaProximaData;
+          } else {
+            console.warn(`⚠️ Não foi possível calcular proxima_data para ensaio ${ensaio.id} (dia_semana: "${ensaio.dia_semana}", semana_mes: ${ensaio.semana_mes})`);
+          }
+        } else {
+          console.log(`[ROUTE /meus] Ensaio ${ensaio.id}: sem dia_semana ou semana_mes (dia_semana: ${ensaio.dia_semana}, semana_mes: ${ensaio.semana_mes})`);
+        }
+        
+        // Garantir que proxima_data seja sempre string YYYY-MM-DD se existir
+        if (ensaio.proxima_data) {
+          if (ensaio.proxima_data instanceof Date) {
+            const ano = ensaio.proxima_data.getFullYear();
+            const mes = String(ensaio.proxima_data.getMonth() + 1).padStart(2, '0');
+            const dia = String(ensaio.proxima_data.getDate()).padStart(2, '0');
+            ensaio.proxima_data = `${ano}-${mes}-${dia}`;
+            console.log(`[ROUTE /meus] Normalizado Date para string no ensaio ${ensaio.id}: ${ensaio.proxima_data}`);
+          } else if (typeof ensaio.proxima_data === 'string' && (ensaio.proxima_data.includes('T') || ensaio.proxima_data.includes(' '))) {
+            const dataObj = new Date(ensaio.proxima_data);
+            if (!isNaN(dataObj.getTime())) {
+              const ano = dataObj.getFullYear();
+              const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+              const dia = String(dataObj.getDate()).padStart(2, '0');
+              ensaio.proxima_data = `${ano}-${mes}-${dia}`;
+              console.log(`[ROUTE /meus] Normalizado ISO string para YYYY-MM-DD no ensaio ${ensaio.id}: ${ensaio.proxima_data}`);
+            }
+          }
+        }
+        
+        console.log(`[ROUTE /meus] Ensaio ${ensaio.id} DEPOIS:`, {
+          dia_semana: ensaio.dia_semana,
+          semana_mes: ensaio.semana_mes,
+          proxima_data: ensaio.proxima_data,
+          tipo_proxima_data: typeof ensaio.proxima_data
+        });
+        
+        return ensaio;
+      });
+      
+      console.log(`[ROUTE /meus] Retornando ${ensaiosComData.length} ensaios. Proximas datas:`, ensaiosComData.map(e => ({ id: e.id, nome_igreja: e.nome_igreja, proxima_data: e.proxima_data, tipo: typeof e.proxima_data })));
+      
+      res.json(ensaiosComData);
     }
   );
 });

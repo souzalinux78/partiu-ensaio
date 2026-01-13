@@ -1,5 +1,5 @@
 const express = require('express');
-const { getDb } = require('../database');
+const { getDb } = require('../database-mysql');
 const { authenticate, requireEncarregado } = require('../middleware/auth');
 const axios = require('axios');
 

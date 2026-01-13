@@ -36,7 +36,26 @@ const DashboardEncarregado = ({ user, onLogout }) => {
   const loadEnsaios = async () => {
     try {
       const response = await api.get('/ensaio/meus');
-      setEnsaios(response.data);
+      console.log('[FRONTEND] Resposta da API /ensaio/meus:', response.data);
+      
+      // Garantir que ensaios com dia_semana e semana_mes tenham proxima_data calculada
+      const ensaiosComData = response.data.map(ensaio => {
+        console.log(`[FRONTEND] Ensaio ${ensaio.id}:`, {
+          dia_semana: ensaio.dia_semana,
+          semana_mes: ensaio.semana_mes,
+          proxima_data: ensaio.proxima_data,
+          tipo_proxima_data: typeof ensaio.proxima_data
+        });
+        
+        // Se o ensaio tem dia_semana e semana_mes mas não tem proxima_data, calcular
+        if (ensaio.dia_semana && ensaio.semana_mes && !ensaio.proxima_data) {
+          console.warn(`[FRONTEND] Ensaio ${ensaio.id} não tem proxima_data!`);
+        }
+        return ensaio;
+      });
+      
+      console.log('[FRONTEND] Ensaios processados:', ensaiosComData);
+      setEnsaios(ensaiosComData);
     } catch (err) {
       console.error('Erro ao carregar ensaios:', err);
     } finally {
@@ -161,13 +180,15 @@ const DashboardEncarregado = ({ user, onLogout }) => {
 
   const handleEdit = (ensaio) => {
     setEditingId(ensaio.id);
+    // Normalizar dia_semana para minúsculas se existir
+    const diaSemanaNormalizado = ensaio.dia_semana ? ensaio.dia_semana.toLowerCase() : '';
     setFormData({
       nome_encarregado: ensaio.nome_encarregado || '',
       tipo: ensaio.tipo || '',
       celular: ensaio.celular || '',
       instrumento: ensaio.instrumento || '',
       categoria_instrumento: ensaio.categoria_instrumento || '',
-      dia_semana: ensaio.dia_semana || '',
+      dia_semana: diaSemanaNormalizado,
       semana_mes: ensaio.semana_mes ? String(ensaio.semana_mes) : '',
       horario: ensaio.horario || '',
       nome_igreja: ensaio.nome_igreja || ensaio.local || '',
@@ -176,8 +197,8 @@ const DashboardEncarregado = ({ user, onLogout }) => {
       estado: ensaio.estado || '',
       foto: null,
     });
-    if (ensaio.dia_semana && ensaio.semana_mes) {
-      calcularProximaData(ensaio.dia_semana, String(ensaio.semana_mes));
+    if (diaSemanaNormalizado && ensaio.semana_mes) {
+      calcularProximaData(diaSemanaNormalizado, String(ensaio.semana_mes));
     }
     setShowForm(true);
     setError('');
@@ -392,13 +413,13 @@ const DashboardEncarregado = ({ user, onLogout }) => {
                       onChange={handleChange}
                     >
                       <option value="">Selecione...</option>
-                      <option value="Segunda-feira">Segunda-feira</option>
-                      <option value="Terça-feira">Terça-feira</option>
-                      <option value="Quarta-feira">Quarta-feira</option>
-                      <option value="Quinta-feira">Quinta-feira</option>
-                      <option value="Sexta-feira">Sexta-feira</option>
-                      <option value="Sábado">Sábado</option>
-                      <option value="Domingo">Domingo</option>
+                      <option value="segunda-feira">Segunda-feira</option>
+                      <option value="terça-feira">Terça-feira</option>
+                      <option value="quarta-feira">Quarta-feira</option>
+                      <option value="quinta-feira">Quinta-feira</option>
+                      <option value="sexta-feira">Sexta-feira</option>
+                      <option value="sábado">Sábado</option>
+                      <option value="domingo">Domingo</option>
                     </select>
                   </div>
                   <div className="form-group">
@@ -610,19 +631,54 @@ const DashboardEncarregado = ({ user, onLogout }) => {
                           )}
                         </p>
                       )}
-                      {ensaio.proxima_data && (
-                        <p><strong>📅 Próxima data:</strong> {new Date(ensaio.proxima_data + 'T00:00:00').toLocaleDateString('pt-BR', { 
-                          weekday: 'long', 
-                          year: 'numeric', 
-                          month: 'long', 
-                          day: 'numeric',
-                          timeZone: 'America/Sao_Paulo'
-                        })}
-                        {ensaio.horario && (
-                          <span> às {ensaio.horario}</span>
-                        )}
-                        </p>
-                      )}
+                      {(() => {
+                        // Sempre tentar exibir a próxima data se existir
+                        if (ensaio.proxima_data) {
+                          try {
+                            // Normalizar a data (pode vir como string YYYY-MM-DD ou Date)
+                            let dataStr = ensaio.proxima_data;
+                            if (ensaio.proxima_data instanceof Date) {
+                              const ano = ensaio.proxima_data.getFullYear();
+                              const mes = String(ensaio.proxima_data.getMonth() + 1).padStart(2, '0');
+                              const dia = String(ensaio.proxima_data.getDate()).padStart(2, '0');
+                              dataStr = `${ano}-${mes}-${dia}`;
+                            } else if (typeof ensaio.proxima_data === 'string' && ensaio.proxima_data.includes('T')) {
+                              // Se vier como ISO string, converter para YYYY-MM-DD
+                              const dataObj = new Date(ensaio.proxima_data);
+                              if (!isNaN(dataObj.getTime())) {
+                                const ano = dataObj.getFullYear();
+                                const mes = String(dataObj.getMonth() + 1).padStart(2, '0');
+                                const dia = String(dataObj.getDate()).padStart(2, '0');
+                                dataStr = `${ano}-${mes}-${dia}`;
+                              }
+                            }
+                            
+                            const dataObj = new Date(dataStr + 'T00:00:00');
+                            if (isNaN(dataObj.getTime())) {
+                              console.warn(`[FRONTEND] Data inválida para ensaio ${ensaio.id}:`, ensaio.proxima_data);
+                              return null;
+                            }
+                            
+                            return (
+                              <p><strong>📅 Próxima data:</strong> {dataObj.toLocaleDateString('pt-BR', { 
+                                weekday: 'long', 
+                                year: 'numeric', 
+                                month: 'long', 
+                                day: 'numeric',
+                                timeZone: 'America/Sao_Paulo'
+                              })}
+                              {ensaio.horario && (
+                                <span> às {ensaio.horario}</span>
+                              )}
+                              </p>
+                            );
+                          } catch (e) {
+                            console.error(`[FRONTEND] Erro ao formatar data do ensaio ${ensaio.id}:`, e, ensaio.proxima_data);
+                            return null;
+                          }
+                        }
+                        return null;
+                      })()}
                       {ensaio.horario && !ensaio.proxima_data && (
                         <p><strong>Horário:</strong> {ensaio.horario}</p>
                       )}
@@ -707,7 +763,17 @@ const DashboardEncarregado = ({ user, onLogout }) => {
                         )}
                         {interesse.celular && <p><strong>Celular:</strong> {interesse.celular}</p>}
                         {interesse.cidade && <p><strong>Cidade:</strong> {interesse.cidade}, {interesse.estado}</p>}
-                        <p><strong>Data do Ensaio:</strong> {new Date(interesse.data_ensaio + 'T00:00:00').toLocaleDateString('pt-BR')}</p>
+                        <p><strong>Data do Ensaio:</strong> {(() => {
+                          try {
+                            const dataObj = new Date(interesse.data_ensaio + 'T00:00:00');
+                            if (isNaN(dataObj.getTime())) {
+                              return interesse.data_ensaio || 'Data inválida';
+                            }
+                            return dataObj.toLocaleDateString('pt-BR');
+                          } catch (e) {
+                            return interesse.data_ensaio || 'Data inválida';
+                          }
+                        })()}</p>
                         <p><small>Interesse registrado em: {new Date(interesse.created_at).toLocaleDateString('pt-BR')}</small></p>
                       </div>
                       <button
