@@ -323,7 +323,21 @@ const EnsaiosPublicos = () => {
     <div className="dashboard">
       <header className="dashboard-header">
         <div className="header-content">
-          <h1>Partiu Ensaio</h1>
+          <div className="logo-container">
+            <img 
+              src="/logo.png" 
+              alt="Partiu Ensaio" 
+              className="logo-img"
+              onError={(e) => {
+                // Se o logo não existir, ocultar a imagem mas manter o texto
+                e.target.style.display = 'none';
+              }}
+            />
+            <div className="logo-text">
+              <span className="partiu">Partiu</span>
+              <span className="ensaio">Ensaio</span>
+            </div>
+          </div>
           <div className="header-actions">
             <Link to="/login" className="btn-link">Login</Link>
             <div className="header-buttons-group">

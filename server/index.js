@@ -61,6 +61,11 @@ app.get('/test-uploads', (req, res) => {
   });
 });
 
+// Rota para gerador de ícones (desenvolvimento)
+app.get('/gerar-icones', (req, res) => {
+  res.sendFile(path.join(__dirname, '../client/public/gerar-icones-e-cores.html'));
+});
+
 // Rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/ensaio', ensaioRoutes);

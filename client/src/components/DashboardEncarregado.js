@@ -318,7 +318,20 @@ const DashboardEncarregado = ({ user, onLogout }) => {
     <div className="dashboard">
       <header className="dashboard-header">
         <div className="header-content">
-          <h1>Partiu Ensaio</h1>
+          <div className="logo-container">
+            <img 
+              src="/logo.png" 
+              alt="Partiu Ensaio" 
+              className="logo-img"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            <div className="logo-text">
+              <span className="partiu">Partiu</span>
+              <span className="ensaio">Ensaio</span>
+            </div>
+          </div>
           <div className="header-actions">
             <span className="user-name">Olá, {user.name}</span>
             <Link to="/" className="btn-link">Ver Público</Link>

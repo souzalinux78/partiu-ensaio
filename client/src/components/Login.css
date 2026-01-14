@@ -3,7 +3,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #D4AF37 100%);
   padding: 20px;
   position: relative;
   overflow: hidden;
@@ -40,7 +40,7 @@
 
 .auth-card h1 {
   text-align: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #D4AF37 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -80,15 +80,15 @@
 
 .form-group input:focus {
   outline: none;
-  border-color: #667eea;
+  border-color: #D4AF37;
   background: white;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
 }
 
 .btn-primary {
   width: 100%;
   padding: 16px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #D4AF37 100%);
   color: white;
   border: none;
   border-radius: 12px;
@@ -121,7 +121,10 @@
 
 .btn-primary:hover:not(:disabled) {
   transform: translateY(-3px);
-  box-shadow: 0 8px 25px rgba(102, 126, 234, 0.5);
+  box-shadow: 0 8px 25px rgba(212, 175, 55, 0.6);
+  background: #FFD700;
+  border-color: #FFD700;
+  color: #000;
 }
 
 .btn-primary:disabled {
@@ -145,9 +148,9 @@
 }
 
 .auth-link a {
-  color: #667eea;
+  color: #D4AF37;
   text-decoration: none;
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .auth-link a:hover {

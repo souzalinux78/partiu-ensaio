@@ -1,0 +1,33 @@
+========================================
+  COMO ABRIR O GERADOR DE ÍCONES
+========================================
+
+O arquivo está em: client/public/gerar-icones-e-cores.html
+
+FORMAS DE ABRIR:
+
+1. FORMA MAIS FÁCIL (Windows):
+   - Abra o Windows Explorer
+   - Vá até: C:\Users\eduardosouza\OneDrive\Documentos\PartiuEnsaio\client\public
+   - Clique DUAS VEZES no arquivo: gerar-icones-e-cores.html
+   - O navegador abrirá automaticamente!
+
+2. VIA BACKEND (se estiver rodando):
+   - Inicie o backend: cd server && npm start
+   - Acesse: http://localhost:5000/gerar-icones
+
+3. VIA REACT (se estiver rodando):
+   - Inicie o React: cd client && npm start
+   - Acesse: http://localhost:3000/gerar-icones-e-cores.html
+
+4. ARRASTAR PARA O NAVEGADOR:
+   - Abra o Windows Explorer
+   - Vá até a pasta client/public
+   - Arraste o arquivo gerar-icones-e-cores.html para o navegador
+
+5. URL DIRETA (copie e cole no navegador):
+   file:///C:/Users/eduardosouza/OneDrive/Documentos/PartiuEnsaio/client/public/gerar-icones-e-cores.html
+
+========================================
+  RECOMENDAÇÃO: Use a FORMA 1 (mais fácil)
+========================================

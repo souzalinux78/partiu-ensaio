@@ -359,7 +359,21 @@ const DashboardAdmin = ({ user, onLogout }) => {
     <div className="dashboard">
       <header className="dashboard-header">
         <div className="header-content">
-          <h1>Partiu Ensaio - Administração</h1>
+          <div className="logo-container">
+            <img 
+              src="/logo.png" 
+              alt="Partiu Ensaio" 
+              className="logo-img"
+              onError={(e) => {
+                e.target.style.display = 'none';
+              }}
+            />
+            <div className="logo-text">
+              <span className="partiu">Partiu</span>
+              <span className="ensaio">Ensaio</span>
+              <span style={{fontSize: '0.9rem', color: '#D4AF37', marginTop: '2px'}}>Administração</span>
+            </div>
+          </div>
           <div className="header-actions">
             <span className="user-name">Admin: {user.name}</span>
             <Link to="/" className="btn-link">Ver Público</Link>
