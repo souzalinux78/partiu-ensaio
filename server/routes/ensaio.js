@@ -644,10 +644,96 @@ router.patch('/:id/status', authenticate, requireAdmin, (req, res) => {
         return res.status(404).json({ error: 'Ensaio não encontrado' });
       }
 
-      db.get('SELECT * FROM ensaios WHERE id = ?', [id], (err, ensaio) => {
+      db.get('SELECT * FROM ensaios WHERE id = ?', [id], async (err, ensaio) => {
         if (err) {
           return res.status(500).json({ error: 'Erro ao buscar ensaio atualizado' });
         }
+        
+        // Enviar webhook de aprovação/rejeição apenas se for aprovação
+        if (status === 'aprovado') {
+          try {
+            // Buscar dados do encarregado
+            db.get('SELECT * FROM users WHERE id = ?', [ensaio.user_id], async (err, encarregado) => {
+              if (err) {
+                console.error('Erro ao buscar encarregado para webhook:', err);
+              }
+              
+              const webhookData = {
+                tipo: 'aprovacao_ensaio',
+                id: ensaio.id,
+                nome_encarregado: ensaio.nome_encarregado || encarregado?.name || null,
+                tipo: ensaio.tipo || null,
+                celular: ensaio.celular || encarregado?.celular || null,
+                dia_semana: ensaio.dia_semana || null,
+                semana_mes: ensaio.semana_mes || null,
+                horario: ensaio.horario || null,
+                nome_igreja: ensaio.nome_igreja || null,
+                endereco: ensaio.endereco || null,
+                cidade: ensaio.cidade || null,
+                estado: ensaio.estado || null,
+                instrumento: ensaio.instrumento || null,
+                categoria_instrumento: ensaio.categoria_instrumento || null,
+                foto_local: ensaio.foto_local || null,
+                status: 'aprovado',
+                aprovado_em: new Date().toISOString(),
+                created_at: ensaio.created_at,
+                user_id: ensaio.user_id,
+                encarregado_email: encarregado?.email || null
+              };
+
+              console.log('=== ENVIANDO WEBHOOK - APROVAÇÃO DE ENSAIO ===');
+              console.log('URL:', WEBHOOK_URL);
+              console.log('Dados:', JSON.stringify(webhookData, null, 2));
+
+              let webhookEnviado = false;
+              
+              // Tentar POST primeiro
+              try {
+                const response = await axios.post(WEBHOOK_URL, webhookData, {
+                  headers: {
+                    'Content-Type': 'application/json'
+                  },
+                  timeout: 15000
+                });
+                
+                console.log('✅ Webhook de aprovação de ensaio enviado com SUCESSO via POST!');
+                console.log('Status:', response.status);
+                webhookEnviado = true;
+              } catch (webhookError) {
+                console.error('❌ ERRO ao enviar webhook via POST:', webhookError.message);
+                
+                // Se o erro for 404 e mencionar GET, tentar GET como fallback
+                if (webhookError.response?.status === 404 && 
+                    webhookError.response?.data?.message?.includes('GET')) {
+                  console.log('⚠️ Webhook não aceita POST, tentando GET como fallback...');
+                  
+                  try {
+                    const params = new URLSearchParams();
+                    Object.keys(webhookData).forEach(key => {
+                      if (webhookData[key] !== null && webhookData[key] !== undefined) {
+                        params.append(key, typeof webhookData[key] === 'object' 
+                          ? JSON.stringify(webhookData[key]) 
+                          : String(webhookData[key]));
+                      }
+                    });
+                    
+                    const getUrl = `${WEBHOOK_URL}?${params.toString()}`;
+                    const getResponse = await axios.get(getUrl, { timeout: 15000 });
+                    
+                    console.log('✅ Webhook de aprovação de ensaio enviado com SUCESSO via GET!');
+                    webhookEnviado = true;
+                  } catch (getError) {
+                    console.error('❌ ERRO ao enviar webhook via GET:', getError.message);
+                  }
+                }
+              }
+            });
+          } catch (webhookErr) {
+            // Não bloquear a resposta se o webhook falhar
+            console.error('❌ Erro ao processar webhook de aprovação de ensaio:', webhookErr.message);
+          }
+        }
+        
         res.json(ensaio);
       });
     }

@@ -1,8 +1,10 @@
 const express = require('express');
+const axios = require('axios');
 const { getDb } = require('../database-mysql');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
 const router = express.Router();
+const WEBHOOK_URL = 'https://webhook.automatizeonline.com.br/webhook/cadastro-ensaio';
 
 // Obter perfil do usuário logado
 router.get('/me', authenticate, (req, res) => {
@@ -123,11 +125,82 @@ router.patch('/:id/aprovar', authenticate, requireAdmin, (req, res) => {
           return res.status(404).json({ error: 'Usuário não encontrado ou não pode ser aprovado' });
         }
 
-        db.get('SELECT * FROM users WHERE id = ?', [id], (err, user) => {
+        db.get('SELECT * FROM users WHERE id = ?', [id], async (err, user) => {
           if (err) {
             return res.status(500).json({ error: 'Erro ao buscar usuário atualizado' });
           }
           console.log(`Usuário ${user.email} (${user.role}) foi aprovado`);
+          
+          // Enviar webhook de aprovação
+          try {
+            const webhookData = {
+              tipo: `aprovacao_${user.role}`,
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              role: user.role,
+              aprovado: true,
+              tipo_encarregado: user.tipo || null,
+              instrumento: user.instrumento || null,
+              categoria_instrumento: user.categoria_instrumento || null,
+              celular: user.celular || null,
+              cidade: user.cidade || null,
+              estado: user.estado || null,
+              aprovado_em: new Date().toISOString(),
+              created_at: user.created_at
+            };
+
+            console.log('=== ENVIANDO WEBHOOK - APROVAÇÃO DE USUÁRIO ===');
+            console.log('URL:', WEBHOOK_URL);
+            console.log('Dados:', JSON.stringify(webhookData, null, 2));
+
+            let webhookEnviado = false;
+            
+            // Tentar POST primeiro
+            try {
+              const response = await axios.post(WEBHOOK_URL, webhookData, {
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                timeout: 15000
+              });
+              
+              console.log('✅ Webhook de aprovação enviado com SUCESSO via POST!');
+              console.log('Status:', response.status);
+              webhookEnviado = true;
+            } catch (webhookError) {
+              console.error('❌ ERRO ao enviar webhook via POST:', webhookError.message);
+              
+              // Se o erro for 404 e mencionar GET, tentar GET como fallback
+              if (webhookError.response?.status === 404 && 
+                  webhookError.response?.data?.message?.includes('GET')) {
+                console.log('⚠️ Webhook não aceita POST, tentando GET como fallback...');
+                
+                try {
+                  const params = new URLSearchParams();
+                  Object.keys(webhookData).forEach(key => {
+                    if (webhookData[key] !== null && webhookData[key] !== undefined) {
+                      params.append(key, typeof webhookData[key] === 'object' 
+                        ? JSON.stringify(webhookData[key]) 
+                        : String(webhookData[key]));
+                    }
+                  });
+                  
+                  const getUrl = `${WEBHOOK_URL}?${params.toString()}`;
+                  const getResponse = await axios.get(getUrl, { timeout: 15000 });
+                  
+                  console.log('✅ Webhook de aprovação enviado com SUCESSO via GET!');
+                  webhookEnviado = true;
+                } catch (getError) {
+                  console.error('❌ ERRO ao enviar webhook via GET:', getError.message);
+                }
+              }
+            }
+          } catch (webhookErr) {
+            // Não bloquear a resposta se o webhook falhar
+            console.error('❌ Erro ao processar webhook de aprovação:', webhookErr.message);
+          }
+          
           res.json(user);
         });
       }
