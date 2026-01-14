@@ -16,7 +16,13 @@ const DashboardAdmin = ({ user, onLogout }) => {
     porCidade: [], 
     porEstado: [],
     porNaipe: [],
-    porInstrumento: []
+    porInstrumento: [],
+    usuarios: {
+      totalMusicos: 0,
+      totalEncarregados: 0,
+      encarregadosLocais: 0,
+      encarregadosRegionais: 0
+    }
   });
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(null);
@@ -500,7 +506,90 @@ const DashboardAdmin = ({ user, onLogout }) => {
 
           {activeTab === 'estatisticas' && (
             <div>
-              <div className="stats-container">
+              {/* Seção de Usuários - Largura Total */}
+              <div className="stats-container" style={{ gridTemplateColumns: '1fr' }}>
+                <div className="stats-section">
+                  <h3>Usuários Cadastrados</h3>
+                  <div className="stats-list">
+                    <div className="stat-item">
+                      <div className="stat-label">Músicos</div>
+                      <div className="stat-bar">
+                        <div
+                          className="stat-bar-fill"
+                          style={{ 
+                            width: '100%',
+                            background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #D4AF37 100%)'
+                          }}
+                        ></div>
+                      </div>
+                      <div className="stat-value">
+                        {estatisticas.usuarios?.totalMusicos || 0} músicos cadastrados
+                      </div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-label">Encarregados (Total)</div>
+                      <div className="stat-bar">
+                        <div
+                          className="stat-bar-fill"
+                          style={{ 
+                            width: '100%',
+                            background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #D4AF37 100%)'
+                          }}
+                        ></div>
+                      </div>
+                      <div className="stat-value">
+                        {estatisticas.usuarios?.totalEncarregados || 0} encarregados cadastrados
+                      </div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-label">Encarregados Locais</div>
+                      <div className="stat-bar">
+                        <div
+                          className="stat-bar-fill"
+                          style={{ 
+                            width: estatisticas.usuarios?.totalEncarregados > 0 
+                              ? `${(estatisticas.usuarios.encarregadosLocais / estatisticas.usuarios.totalEncarregados) * 100}%`
+                              : '0%',
+                            background: '#D4AF37'
+                          }}
+                        ></div>
+                      </div>
+                      <div className="stat-value">
+                        {estatisticas.usuarios?.encarregadosLocais || 0} encarregados locais
+                        {estatisticas.usuarios?.totalEncarregados > 0 && (
+                          <span style={{ color: '#666', marginLeft: '8px' }}>
+                            ({Math.round((estatisticas.usuarios.encarregadosLocais / estatisticas.usuarios.totalEncarregados) * 100)}%)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-label">Encarregados Regionais</div>
+                      <div className="stat-bar">
+                        <div
+                          className="stat-bar-fill"
+                          style={{ 
+                            width: estatisticas.usuarios?.totalEncarregados > 0 
+                              ? `${(estatisticas.usuarios.encarregadosRegionais / estatisticas.usuarios.totalEncarregados) * 100}%`
+                              : '0%',
+                            background: '#1a1a1a'
+                          }}
+                        ></div>
+                      </div>
+                      <div className="stat-value">
+                        {estatisticas.usuarios?.encarregadosRegionais || 0} encarregados regionais
+                        {estatisticas.usuarios?.totalEncarregados > 0 && (
+                          <span style={{ color: '#666', marginLeft: '8px' }}>
+                            ({Math.round((estatisticas.usuarios.encarregadosRegionais / estatisticas.usuarios.totalEncarregados) * 100)}%)
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="stats-container" style={{ marginTop: '30px' }}>
                 <div className="stats-section">
                   <h3>Igrejas por Cidade</h3>
                   {estatisticas.porCidade.length === 0 ? (

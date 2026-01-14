@@ -584,12 +584,55 @@ router.get('/estatisticas', authenticate, requireAdmin, (req, res) => {
                     return res.status(500).json({ error: 'Erro ao buscar estatísticas por instrumentos' });
                   }
                   
-                  res.json({
-                    porCidade: porCidade || [],
-                    porEstado: porEstado || [],
-                    porNaipe: porNaipe || [],
-                    porInstrumento: porInstrumento || []
-                  });
+                  // Estatísticas de usuários
+                  // Total de músicos
+                  db.get(
+                    `SELECT COUNT(*) as total FROM users WHERE role = 'musico' AND aprovado = 1`,
+                    [],
+                    (err, musicosResult) => {
+                      const totalMusicos = err ? 0 : (musicosResult?.total || 0);
+                      
+                      // Total de encarregados
+                      db.get(
+                        `SELECT COUNT(*) as total FROM users WHERE role = 'encarregado' AND aprovado = 1`,
+                        [],
+                        (err, encarregadosResult) => {
+                          const totalEncarregados = err ? 0 : (encarregadosResult?.total || 0);
+                          
+                          // Encarregados locais
+                          db.get(
+                            `SELECT COUNT(*) as total FROM users WHERE role = 'encarregado' AND aprovado = 1 AND tipo = 'local'`,
+                            [],
+                            (err, encarregadosLocaisResult) => {
+                              const encarregadosLocais = err ? 0 : (encarregadosLocaisResult?.total || 0);
+                              
+                              // Encarregados regionais
+                              db.get(
+                                `SELECT COUNT(*) as total FROM users WHERE role = 'encarregado' AND aprovado = 1 AND tipo = 'regional'`,
+                                [],
+                                (err, encarregadosRegionaisResult) => {
+                                  const encarregadosRegionais = err ? 0 : (encarregadosRegionaisResult?.total || 0);
+                                  
+                                  res.json({
+                                    porCidade: porCidade || [],
+                                    porEstado: porEstado || [],
+                                    porNaipe: porNaipe || [],
+                                    porInstrumento: porInstrumento || [],
+                                    usuarios: {
+                                      totalMusicos: totalMusicos,
+                                      totalEncarregados: totalEncarregados,
+                                      encarregadosLocais: encarregadosLocais,
+                                      encarregadosRegionais: encarregadosRegionais
+                                    }
+                                  });
+                                }
+                              );
+                            }
+                          );
+                        }
+                      );
+                    }
+                  );
                 }
               );
             }
