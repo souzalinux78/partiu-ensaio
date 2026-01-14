@@ -30,8 +30,21 @@ npm run build
 echo "🔍 [6/7] Verificando se as cores foram incluídas no build..."
 if grep -q "D4AF37" build/static/css/main.*.css 2>/dev/null; then
     echo "✅ Cores encontradas no build!"
+    grep -i "D4AF37" build/static/css/main.*.css | head -3
 else
-    echo "⚠️  AVISO: Cores podem não estar no build. Verifique manualmente."
+    echo "❌ ERRO: Cores NÃO encontradas no build!"
+    echo ""
+    echo "🔍 Verificando se as cores estão nos arquivos fonte..."
+    if grep -q "D4AF37" ../src/components/*.css 2>/dev/null; then
+        echo "✅ Cores encontradas nos arquivos fonte"
+        echo "⚠️  O problema pode ser no processo de build"
+        echo "   Tente executar: npm run build novamente"
+    else
+        echo "❌ Cores NÃO encontradas nos arquivos fonte!"
+        echo "   Execute: git pull origin master"
+        echo "   E verifique se as mudanças foram commitadas"
+    fi
+    exit 1
 fi
 
 echo "🔄 [7/7] Reiniciando PM2..."
