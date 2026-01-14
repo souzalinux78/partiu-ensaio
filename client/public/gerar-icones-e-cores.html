@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerador de Ícones e Cores - Partiu Ensaio</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 30px;
+            font-size: 2.5rem;
+            font-weight: 800;
+        }
+
+        .section {
+            margin-bottom: 40px;
+            padding: 30px;
+            background: #f8f9fa;
+            border-radius: 12px;
+        }
+
+        .section h2 {
+            color: #333;
+            margin-bottom: 20px;
+            font-size: 1.5rem;
+        }
+
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: white;
+        }
+
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f8f9ff;
+        }
+
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #f0f4ff;
+        }
+
+        input[type="file"] {
+            display: none;
+        }
+
+        .preview-container {
+            margin-top: 30px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+        }
+
+        .preview-item {
+            text-align: center;
+            padding: 20px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .preview-item img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            margin-bottom: 10px;
+        }
+
+        .preview-item label {
+            display: block;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+
+        .preview-item small {
+            color: #666;
+            font-size: 0.85rem;
+        }
+
+        .colors-preview {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+
+        .color-box {
+            width: 120px;
+            height: 120px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        .color-code {
+            margin-top: 8px;
+            font-size: 0.9rem;
+            font-family: monospace;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 14px 28px;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+            margin-top: 20px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            color: #1565c0;
+        }
+
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            font-weight: 500;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 Gerador de Ícones e Cores</h1>
+        
+        <div class="section">
+            <h2>1. Upload da Imagem</h2>
+            <div class="upload-area" id="uploadArea">
+                <p style="font-size: 1.2rem; color: #667eea; margin-bottom: 10px;">📤 Clique ou arraste a imagem aqui</p>
+                <p style="color: #666; font-size: 0.9rem;">Formatos aceitos: PNG, JPG, JPEG, SVG</p>
+                <input type="file" id="imageInput" accept="image/*">
+            </div>
+            <div id="imagePreview" class="preview-container" style="display: none;"></div>
+        </div>
+
+        <div class="section" id="colorsSection" style="display: none;">
+            <h2>2. Cores Extraídas</h2>
+            <div id="colorsPreview" class="colors-preview"></div>
+            <div class="info">
+                <strong>💡 Dica:</strong> As cores foram extraídas automaticamente da sua imagem. 
+                A primeira cor será usada como cor primária e a segunda como cor secundária.
+            </div>
+        </div>
+
+        <div class="section" id="iconsSection" style="display: none;">
+            <h2>3. Ícones Gerados</h2>
+            <div id="iconsPreview" class="preview-container"></div>
+            <button class="btn" id="downloadBtn">💾 Baixar Todos os Ícones</button>
+        </div>
+
+        <div id="status"></div>
+    </div>
+
+    <script>
+        const uploadArea = document.getElementById('uploadArea');
+        const imageInput = document.getElementById('imageInput');
+        const imagePreview = document.getElementById('imagePreview');
+        const colorsSection = document.getElementById('colorsSection');
+        const colorsPreview = document.getElementById('colorsPreview');
+        const iconsSection = document.getElementById('iconsSection');
+        const iconsPreview = document.getElementById('iconsPreview');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const statusDiv = document.getElementById('status');
+
+        let extractedColors = [];
+        let originalImage = null;
+
+        // Upload area interactions
+        uploadArea.addEventListener('click', () => imageInput.click());
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file && file.type.startsWith('image/')) {
+                handleImage(file);
+            }
+        });
+
+        imageInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                handleImage(file);
+            }
+        });
+
+        function handleImage(file) {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    originalImage = img;
+                    showImagePreview(img);
+                    extractColors(img);
+                    generateIcons(img);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function showImagePreview(img) {
+            imagePreview.innerHTML = `
+                <div class="preview-item">
+                    <img src="${img.src}" alt="Imagem Original">
+                    <label>Imagem Original</label>
+                    <small>${img.width} × ${img.height}px</small>
+                </div>
+            `;
+            imagePreview.style.display = 'grid';
+        }
+
+        function extractColors(img) {
+            const canvas = document.createElement('canvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            ctx.drawImage(img, 0, 0);
+
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const pixels = imageData.data;
+            const colorMap = {};
+
+            // Sample pixels (every 10th pixel for performance)
+            for (let i = 0; i < pixels.length; i += 40) {
+                const r = pixels[i];
+                const g = pixels[i + 1];
+                const b = pixels[i + 2];
+                const a = pixels[i + 3];
+
+                if (a < 128) continue; // Skip transparent pixels
+
+                const color = `#${[r, g, b].map(x => {
+                    const hex = x.toString(16);
+                    return hex.length === 1 ? '0' + hex : hex;
+                }).join('')}`;
+
+                colorMap[color] = (colorMap[color] || 0) + 1;
+            }
+
+            // Get most common colors
+            const sortedColors = Object.entries(colorMap)
+                .sort((a, b) => b[1] - a[1])
+                .slice(0, 5)
+                .map(([color]) => color);
+
+            // Ensure we have at least 2 colors
+            extractedColors = sortedColors.length >= 2 
+                ? sortedColors.slice(0, 2)
+                : [sortedColors[0] || '#667eea', '#764ba2'];
+
+            displayColors();
+        }
+
+        function displayColors() {
+            colorsPreview.innerHTML = '';
+            extractedColors.forEach((color, index) => {
+                const colorBox = document.createElement('div');
+                colorBox.className = 'color-box';
+                colorBox.style.background = color;
+                colorBox.innerHTML = `
+                    <div>Cor ${index + 1}</div>
+                    <div class="color-code">${color}</div>
+                `;
+                colorsPreview.appendChild(colorBox);
+            });
+            colorsSection.style.display = 'block';
+        }
+
+        function generateIcons(img) {
+            iconsPreview.innerHTML = '';
+            const sizes = [
+                { size: 32, name: 'favicon.ico', label: 'Favicon' },
+                { size: 192, name: 'icon-192x192.png', label: 'Ícone PWA 192x192' },
+                { size: 512, name: 'icon-512x512.png', label: 'Ícone PWA 512x512' }
+            ];
+
+            sizes.forEach(({ size, name, label }) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                // Draw image centered and scaled
+                const scale = Math.min(canvas.width / img.width, canvas.height / img.height);
+                const x = (canvas.width - img.width * scale) / 2;
+                const y = (canvas.height - img.height * scale) / 2;
+
+                ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+
+                const dataUrl = canvas.toDataURL('image/png');
+                
+                const previewItem = document.createElement('div');
+                previewItem.className = 'preview-item';
+                previewItem.innerHTML = `
+                    <img src="${dataUrl}" alt="${label}">
+                    <label>${label}</label>
+                    <small>${size} × ${size}px</small>
+                    <button class="btn" style="margin-top: 10px; padding: 8px 16px; font-size: 0.9rem;" 
+                            onclick="downloadIcon('${dataUrl}', '${name}')">
+                        📥 Baixar
+                    </button>
+                `;
+                iconsPreview.appendChild(previewItem);
+            });
+
+            iconsSection.style.display = 'block';
+        }
+
+        function downloadIcon(dataUrl, filename) {
+            const link = document.createElement('a');
+            link.download = filename;
+            link.href = dataUrl;
+            link.click();
+        }
+
+        downloadBtn.addEventListener('click', () => {
+            const sizes = [
+                { size: 32, name: 'favicon.ico' },
+                { size: 192, name: 'icon-192x192.png' },
+                { size: 512, name: 'icon-512x512.png' }
+            ];
+
+            sizes.forEach(({ size, name }) => {
+                const canvas = document.createElement('canvas');
+                canvas.width = size;
+                canvas.height = size;
+                const ctx = canvas.getContext('2d');
+
+                const scale = Math.min(canvas.width / originalImage.width, canvas.height / originalImage.height);
+                const x = (canvas.width - originalImage.width * scale) / 2;
+                const y = (canvas.height - originalImage.height * scale) / 2;
+
+                ctx.drawImage(originalImage, x, y, originalImage.width * scale, originalImage.height * scale);
+                const dataUrl = canvas.toDataURL('image/png');
+                
+                setTimeout(() => downloadIcon(dataUrl, name), 100);
+            });
+
+            showStatus('✅ Todos os ícones foram baixados!', 'success');
+        });
+
+        function showStatus(message, type) {
+            statusDiv.innerHTML = `<div class="status ${type}">${message}</div>`;
+            setTimeout(() => {
+                statusDiv.innerHTML = '';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

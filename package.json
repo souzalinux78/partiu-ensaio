@@ -8,7 +8,8 @@
     "server": "cd server && npm run dev",
     "client": "cd client && npm start",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
-    "generate-icons": "node ./scripts/generate-icons.js"
+    "generate-icons": "node ./scripts/generate-icons.js",
+    "update-theme-colors": "node ./scripts/atualizar-cores-tema.js"
   },
   "keywords": [
     "agenda",
