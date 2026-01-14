@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api, { getBaseUrl } from '../utils/api';
+import AlterarSenha from './AlterarSenha';
 import './Dashboard.css';
 
 const DashboardMusico = ({ user, onLogout }) => {
@@ -8,6 +9,7 @@ const DashboardMusico = ({ user, onLogout }) => {
   const [loading, setLoading] = useState(true);
   const [interesses, setInteresses] = useState({}); // { ensaioId_data: true/false }
   const [processandoInteresse, setProcessandoInteresse] = useState({});
+  const [showAlterarSenha, setShowAlterarSenha] = useState(false);
 
   useEffect(() => {
     loadEnsaios();
@@ -108,6 +110,7 @@ const DashboardMusico = ({ user, onLogout }) => {
           <div className="header-actions">
             <span className="user-name">Olá, {user.name}</span>
             <Link to="/" className="btn-link">Ver Público</Link>
+            <button onClick={() => setShowAlterarSenha(true)} className="btn-link">Alterar Senha</button>
             <button onClick={onLogout} className="btn-secondary">Sair</button>
           </div>
         </div>
@@ -238,6 +241,11 @@ const DashboardMusico = ({ user, onLogout }) => {
           )}
         </div>
       </main>
+      
+      <AlterarSenha 
+        isOpen={showAlterarSenha}
+        onClose={() => setShowAlterarSenha(false)}
+      />
     </div>
   );
 };

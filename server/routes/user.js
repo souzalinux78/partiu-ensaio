@@ -1,5 +1,6 @@
 const express = require('express');
 const axios = require('axios');
+const bcrypt = require('bcryptjs');
 const { getDb } = require('../database-mysql');
 const { authenticate, requireAdmin } = require('../middleware/auth');
 
@@ -206,6 +207,94 @@ router.patch('/:id/aprovar', authenticate, requireAdmin, (req, res) => {
       }
     );
   }
+});
+
+// Alterar senha do usuário
+router.post('/alterar-senha', authenticate, (req, res) => {
+  const { senhaAtual, novaSenha, userId } = req.body;
+  const db = getDb();
+  
+  // Determinar qual usuário terá a senha alterada
+  // Se userId for fornecido e o usuário for admin, pode alterar senha de qualquer usuário
+  // Caso contrário, só pode alterar sua própria senha
+  const isAdminChangingOtherUser = userId && req.user.role === 'admin';
+  const targetUserId = isAdminChangingOtherUser ? userId : req.user.id;
+  
+  // Validar campos obrigatórios
+  // Admin alterando senha de outro usuário não precisa de senhaAtual
+  if (!isAdminChangingOtherUser && !senhaAtual) {
+    return res.status(400).json({ error: 'Senha atual é obrigatória' });
+  }
+  
+  if (!novaSenha) {
+    return res.status(400).json({ error: 'Nova senha é obrigatória' });
+  }
+  
+  // Validar tamanho da nova senha
+  if (novaSenha.length < 6) {
+    return res.status(400).json({ error: 'A nova senha deve ter no mínimo 6 caracteres' });
+  }
+  
+  // Buscar o usuário
+  db.get('SELECT * FROM users WHERE id = ?', [targetUserId], (err, user) => {
+    if (err) {
+      console.error('❌ Erro ao buscar usuário:', err);
+      return res.status(500).json({ error: 'Erro ao buscar usuário' });
+    }
+    
+    if (!user) {
+      return res.status(404).json({ error: 'Usuário não encontrado' });
+    }
+    
+    // Se não for admin alterando senha de outro usuário, verificar senha atual
+    if (!isAdminChangingOtherUser) {
+      // Verificar senha atual
+      bcrypt.compare(senhaAtual, user.password, (err, isMatch) => {
+        if (err) {
+          console.error('❌ Erro ao verificar senha:', err);
+          return res.status(500).json({ error: 'Erro ao verificar senha' });
+        }
+        
+        if (!isMatch) {
+          return res.status(401).json({ error: 'Senha atual incorreta' });
+        }
+        
+        // Senha atual está correta, atualizar para nova senha
+        updatePassword();
+      });
+    } else {
+      // Admin alterando senha de outro usuário, não precisa verificar senha atual
+      updatePassword();
+    }
+    
+    function updatePassword() {
+      // Gerar hash da nova senha
+      bcrypt.hash(novaSenha, 10, (err, hash) => {
+        if (err) {
+          console.error('❌ Erro ao gerar hash da senha:', err);
+          return res.status(500).json({ error: 'Erro ao gerar nova senha' });
+        }
+        
+        // Atualizar senha no banco
+        db.run('UPDATE users SET password = ? WHERE id = ?', [hash, targetUserId], function(err) {
+          if (err) {
+            console.error('❌ Erro ao atualizar senha:', err);
+            return res.status(500).json({ error: 'Erro ao atualizar senha' });
+          }
+          
+          if (this.changes === 0) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
+          }
+          
+          console.log(`✅ Senha alterada com sucesso para usuário ${user.email} (ID: ${targetUserId})`);
+          res.json({ 
+            message: 'Senha alterada com sucesso',
+            success: true
+          });
+        });
+      });
+    }
+  });
 });
 
 module.exports = router;

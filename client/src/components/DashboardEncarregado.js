@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api, { getBaseUrl } from '../utils/api';
 import { instrumentos, getCategoriaInstrumento } from '../utils/instrumentos';
+import AlterarSenha from './AlterarSenha';
 import './Dashboard.css';
 
 const DashboardEncarregado = ({ user, onLogout }) => {
@@ -10,6 +11,7 @@ const DashboardEncarregado = ({ user, onLogout }) => {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [interessesModal, setInteressesModal] = useState({ ensaioId: null, interesses: [], loading: false });
+  const [showAlterarSenha, setShowAlterarSenha] = useState(false);
   const [formData, setFormData] = useState({
     nome_encarregado: '',
     tipo: '',
@@ -335,6 +337,7 @@ const DashboardEncarregado = ({ user, onLogout }) => {
           <div className="header-actions">
             <span className="user-name">Olá, {user.name}</span>
             <Link to="/" className="btn-link">Ver Público</Link>
+            <button onClick={() => setShowAlterarSenha(true)} className="btn-link">Alterar Senha</button>
             <button onClick={onLogout} className="btn-secondary">Sair</button>
           </div>
         </div>
@@ -809,6 +812,11 @@ const DashboardEncarregado = ({ user, onLogout }) => {
           </div>
         </div>
       )}
+      
+      <AlterarSenha 
+        isOpen={showAlterarSenha}
+        onClose={() => setShowAlterarSenha(false)}
+      />
     </div>
   );
 };
