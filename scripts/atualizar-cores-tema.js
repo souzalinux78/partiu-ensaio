@@ -23,37 +23,63 @@ if (args.length >= 2) {
   console.log('   Exemplo: node scripts/atualizar-cores-tema.js #FF6B6B #4ECDC4');
 }
 
+// Função para escapar caracteres especiais em regex
+function escapeRegex(str) {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
 // Função para substituir cores em um arquivo
 function atualizarCoresNoArquivo(filePath, replacements) {
   try {
     let content = fs.readFileSync(filePath, 'utf8');
     let modificado = false;
+    const originalContent = content;
 
     replacements.forEach(({ de, para }) => {
-      // Substituir cores individuais
-      const regexCor = new RegExp(de.replace('#', '\\#'), 'gi');
-      if (content.match(regexCor)) {
-        content = content.replace(regexCor, para);
+      const corEscapada = escapeRegex(de);
+      
+      // 1. Substituir cores individuais (com e sem #)
+      const regexCorSimples = new RegExp(corEscapada, 'gi');
+      if (content.match(regexCorSimples)) {
+        content = content.replace(regexCorSimples, para);
         modificado = true;
       }
 
-      // Substituir em gradientes (linear-gradient com a cor)
-      const regexGradiente = new RegExp(
-        `linear-gradient\\([^)]*${de.replace('#', '\\#')}[^)]*\\)`,
+      // 2. Substituir em gradientes completos
+      // Padrão: linear-gradient(135deg, #COR1 0%, #COR2 100%)
+      const gradientePattern = new RegExp(
+        `linear-gradient\\(135deg,\\s*${corEscapada}\\s+0%,\\s*[^)]+\\s+100%\\)`,
         'gi'
       );
-      if (content.match(regexGradiente)) {
-        // Substituir a cor no gradiente mantendo a estrutura
-        content = content.replace(regexGradiente, (match) => {
-          return match.replace(new RegExp(de.replace('#', '\\#'), 'gi'), para);
+      content = content.replace(gradientePattern, (match) => {
+        return match.replace(new RegExp(corEscapada, 'gi'), para);
+      });
+
+      // 3. Substituir em gradientes invertidos (cor2 primeiro)
+      const gradienteInvertidoPattern = new RegExp(
+        `linear-gradient\\(135deg,\\s*[^,]+,\\s*${corEscapada}\\s+[^)]+\\)`,
+        'gi'
+      );
+      content = content.replace(gradienteInvertidoPattern, (match) => {
+        return match.replace(new RegExp(corEscapada, 'gi'), para);
+      });
+
+      // 4. Substituir em qualquer gradiente que contenha a cor
+      const qualquerGradiente = new RegExp(
+        `linear-gradient\\([^)]*${corEscapada}[^)]*\\)`,
+        'gi'
+      );
+      if (content.match(qualquerGradiente)) {
+        content = content.replace(qualquerGradiente, (match) => {
+          return match.replace(new RegExp(corEscapada, 'gi'), para);
         });
         modificado = true;
       }
     });
 
-    if (modificado) {
+    if (content !== originalContent) {
       fs.writeFileSync(filePath, content, 'utf8');
-      console.log(`✅ Atualizado: ${filePath}`);
+      console.log(`✅ Atualizado: ${path.relative(process.cwd(), filePath)}`);
       return true;
     }
     return false;
@@ -108,49 +134,42 @@ const arquivos = [
   }
 ];
 
-// Também atualizar gradientes completos
-const gradientes = [
-  {
-    path: path.join(__dirname, '../client/public/index.html'),
-    de: `linear-gradient(135deg, ${CORES_PADRAO.primaria} 0%, ${CORES_PADRAO.secundaria} 100%)`,
-    para: `linear-gradient(135deg, ${cores.primaria} 0%, ${cores.secundaria} 100%)`
-  }
-];
-
 console.log('\n🔄 Atualizando cores do tema...\n');
+console.log(`📋 Cores a substituir:`);
+console.log(`   ${CORES_PADRAO.primaria} → ${cores.primaria}`);
+console.log(`   ${CORES_PADRAO.secundaria} → ${cores.secundaria}\n`);
 
 let atualizados = 0;
+let naoEncontrados = 0;
+
 arquivos.forEach(({ path: filePath, replacements }) => {
   if (fs.existsSync(filePath)) {
     if (atualizarCoresNoArquivo(filePath, replacements)) {
       atualizados++;
+    } else {
+      console.log(`ℹ️  Nenhuma alteração necessária: ${path.relative(process.cwd(), filePath)}`);
     }
   } else {
-    console.log(`⚠️  Arquivo não encontrado: ${filePath}`);
+    console.log(`⚠️  Arquivo não encontrado: ${path.relative(process.cwd(), filePath)}`);
+    naoEncontrados++;
   }
 });
 
-// Atualizar gradientes completos
-gradientes.forEach(({ path: filePath, de, para }) => {
-  if (fs.existsSync(filePath)) {
-    try {
-      let content = fs.readFileSync(filePath, 'utf8');
-      if (content.includes(de)) {
-        content = content.replace(new RegExp(de.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g'), para);
-        fs.writeFileSync(filePath, content, 'utf8');
-        console.log(`✅ Gradiente atualizado: ${filePath}`);
-        if (!arquivos.find(a => a.path === filePath)) {
-          atualizados++;
-        }
-      }
-    } catch (error) {
-      console.error(`❌ Erro ao atualizar gradiente em ${filePath}:`, error.message);
-    }
-  }
-});
+console.log(`\n📊 Resumo:`);
+console.log(`   ✅ ${atualizados} arquivo(s) atualizado(s)`);
+if (naoEncontrados > 0) {
+  console.log(`   ⚠️  ${naoEncontrados} arquivo(s) não encontrado(s)`);
+}
 
-console.log(`\n✅ ${atualizados} arquivo(s) atualizado(s) com sucesso!`);
-console.log('\n📝 Próximos passos:');
-console.log('   1. Revisar as alterações nos arquivos');
-console.log('   2. Executar: cd client && npm run build');
-console.log('   3. Testar o site com as novas cores');
+if (atualizados > 0) {
+  console.log('\n✅ Cores atualizadas com sucesso!');
+  console.log('\n📝 Próximos passos:');
+  console.log('   1. Revisar as alterações nos arquivos');
+  console.log('   2. Executar: cd client && npm run build');
+  console.log('   3. Testar o site com as novas cores');
+  console.log('\n💡 Dica: Use git diff para ver as alterações feitas');
+} else {
+  console.log('\n⚠️  Nenhum arquivo foi atualizado.');
+  console.log('   Verifique se as cores fornecidas estão corretas.');
+  console.log('   Exemplo: npm run update-theme-colors #FF6B6B #4ECDC4');
+}

@@ -1,5 +1,7 @@
 # 🎨 Atualizar Ícones e Cores do Site
 
+> ⚠️ **ATENÇÃO:** Para instruções detalhadas passo a passo, veja: [COMO-ATUALIZAR-ICONES-E-CORES.md](./COMO-ATUALIZAR-ICONES-E-CORES.md)
+
 Este guia explica como usar uma imagem personalizada como ícone do site e atualizar as cores do tema para ficar consistente e elegante.
 
 ## 📋 Passo a Passo

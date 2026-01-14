@@ -205,7 +205,16 @@
         <div class="section" id="colorsSection" style="display: none;">
             <h2>2. Cores Extraídas</h2>
             <div id="colorsPreview" class="colors-preview"></div>
-            <div class="info">
+            <div class="info" id="commandInfo" style="display: none;">
+                <strong>📋 Comando para atualizar cores:</strong>
+                <div style="background: #2d3748; color: #fff; padding: 15px; border-radius: 8px; margin-top: 10px; font-family: monospace; font-size: 0.9rem; word-break: break-all;">
+                    npm run update-theme-colors <span id="color1Text"></span> <span id="color2Text"></span>
+                </div>
+                <div style="margin-top: 10px; font-size: 0.9rem; color: #666;">
+                    💡 Copie este comando e execute no terminal na raiz do projeto
+                </div>
+            </div>
+            <div class="info" style="margin-top: 15px;">
                 <strong>💡 Dica:</strong> As cores foram extraídas automaticamente da sua imagem. 
                 A primeira cor será usada como cor primária e a segunda como cor secundária.
             </div>
@@ -339,6 +348,14 @@
                 `;
                 colorsPreview.appendChild(colorBox);
             });
+            
+            // Mostrar comando
+            if (extractedColors.length >= 2) {
+                document.getElementById('color1Text').textContent = extractedColors[0];
+                document.getElementById('color2Text').textContent = extractedColors[1];
+                document.getElementById('commandInfo').style.display = 'block';
+            }
+            
             colorsSection.style.display = 'block';
         }
 
@@ -396,7 +413,7 @@
                 { size: 512, name: 'icon-512x512.png' }
             ];
 
-            sizes.forEach(({ size, name }) => {
+            sizes.forEach(({ size, name }, index) => {
                 const canvas = document.createElement('canvas');
                 canvas.width = size;
                 canvas.height = size;
@@ -409,10 +426,21 @@
                 ctx.drawImage(originalImage, x, y, originalImage.width * scale, originalImage.height * scale);
                 const dataUrl = canvas.toDataURL('image/png');
                 
-                setTimeout(() => downloadIcon(dataUrl, name), 100);
+                setTimeout(() => downloadIcon(dataUrl, name), index * 200);
             });
 
-            showStatus('✅ Todos os ícones foram baixados!', 'success');
+            // Criar arquivo de texto com as cores para copiar
+            const coresTexto = `Cores extraídas da imagem:\n\nPrimária: ${extractedColors[0]}\nSecundária: ${extractedColors[1]}\n\nPara atualizar as cores do tema, execute:\n\nnpm run update-theme-colors ${extractedColors[0]} ${extractedColors[1]}`;
+            
+            const blob = new Blob([coresTexto], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'cores-extraidas.txt';
+            link.click();
+            URL.revokeObjectURL(url);
+
+            showStatus('✅ Todos os ícones foram baixados! Arquivo de cores também foi salvo.', 'success');
         });
 
         function showStatus(message, type) {
