@@ -35,33 +35,55 @@
 }
 
 .install-prompt {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #D4AF37 100%);
   color: white;
-  padding: 20px;
-  border-radius: 20px 20px 0 0;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.1);
+  padding: 24px;
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -8px 32px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(212, 175, 55, 0.2);
   max-width: 600px;
   margin: 0 auto;
   position: relative;
   pointer-events: all;
   animation: pulse 2s ease-in-out infinite;
+  border-top: 3px solid #D4AF37;
   /* Garantir visibilidade em todos os dispositivos */
   -webkit-backface-visibility: hidden;
   backface-visibility: hidden;
   will-change: transform;
+  overflow: hidden;
+}
+
+.install-prompt::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, #D4AF37 0%, #FFD700 50%, #D4AF37 100%);
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .install-prompt-close {
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  color: white;
-  width: 32px;
-  height: 32px;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 2px solid rgba(212, 175, 55, 0.5);
+  color: #D4AF37;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  font-size: 24px;
+  font-size: 20px;
   line-height: 1;
   cursor: pointer;
   display: flex;
@@ -69,11 +91,16 @@
   justify-content: center;
   transition: all 0.3s ease;
   z-index: 1;
+  font-weight: bold;
+  backdrop-filter: blur(10px);
 }
 
 .install-prompt-close:hover {
-  background: rgba(255, 255, 255, 0.3);
-  transform: rotate(90deg);
+  background: rgba(212, 175, 55, 0.2);
+  border-color: #D4AF37;
+  color: #FFD700;
+  transform: rotate(90deg) scale(1.1);
+  box-shadow: 0 0 12px rgba(212, 175, 55, 0.5);
 }
 
 .install-prompt-content {
@@ -84,18 +111,28 @@
 }
 
 .install-prompt-icon {
-  font-size: 56px;
+  font-size: 64px;
   flex-shrink: 0;
   animation: bounce 2s infinite;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(0 4px 12px rgba(212, 175, 55, 0.5));
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 @keyframes bounce {
   0%, 100% {
-    transform: translateY(0) scale(1);
+    transform: translateY(0) scale(1) rotate(0deg);
+  }
+  25% {
+    transform: translateY(-6px) scale(1.05) rotate(-5deg);
   }
   50% {
-    transform: translateY(-8px) scale(1.1);
+    transform: translateY(-10px) scale(1.1) rotate(0deg);
+  }
+  75% {
+    transform: translateY(-6px) scale(1.05) rotate(5deg);
   }
 }
 
@@ -105,17 +142,24 @@
 }
 
 .install-prompt-text h3 {
-  margin: 0 0 5px 0;
-  font-size: 1.4rem;
-  font-weight: bold;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
+  font-weight: 800;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  background: linear-gradient(135deg, #ffffff 0%, #D4AF37 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.5px;
 }
 
 .install-prompt-text p {
   margin: 0;
   font-size: 0.95rem;
-  opacity: 0.95;
-  line-height: 1.4;
+  opacity: 0.9;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
 }
 
 .install-prompt h3 {
@@ -154,32 +198,40 @@
 }
 
 .install-btn-primary {
-  background: white;
-  color: #667eea;
-  box-shadow: 0 4px 12px rgba(255, 255, 255, 0.3);
+  background: #D4AF37;
+  color: #1a1a1a;
+  border: 2px solid #D4AF37;
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  font-weight: 800;
 }
 
 .install-btn-primary:hover {
-  background: #f0f0f0;
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(255, 255, 255, 0.4);
+  background: #FFD700;
+  border-color: #FFD700;
+  color: #000;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(255, 215, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 .install-btn-primary:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.4);
 }
 
 .install-btn-secondary {
-  background: rgba(255, 255, 255, 0.15);
+  background: transparent;
   color: white;
-  border: 2px solid rgba(255, 255, 255, 0.4);
+  border: 2px solid rgba(255, 255, 255, 0.5);
   backdrop-filter: blur(10px);
+  font-weight: 700;
 }
 
 .install-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.25);
-  border-color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1);
+  border-color: #D4AF37;
+  color: #D4AF37;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(212, 175, 55, 0.3);
 }
 
 /* Responsivo */
@@ -189,8 +241,51 @@
   }
 
   .install-prompt {
+    padding: 20px;
+    border-radius: 20px 20px 0 0;
+  }
+
+  .install-prompt-content {
+    flex-direction: row;
+    text-align: left;
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .install-prompt-text {
+    text-align: left;
+  }
+
+  .install-prompt-text h3 {
+    font-size: 1.3rem;
+    margin-bottom: 6px;
+  }
+
+  .install-prompt-text p {
+    font-size: 0.9rem;
+  }
+
+  .install-prompt-icon {
+    font-size: 56px;
+  }
+
+  .install-prompt-buttons {
+    flex-direction: row;
+    gap: 10px;
+  }
+
+  .install-btn-primary,
+  .install-btn-secondary {
+    flex: 1;
+    padding: 14px 20px;
+    font-size: 0.95rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .install-prompt {
     padding: 18px;
-    border-radius: 16px 16px 0 0;
+    border-radius: 18px 18px 0 0;
   }
 
   .install-prompt-content {
@@ -208,7 +303,7 @@
   }
 
   .install-prompt-text p {
-    font-size: 0.9rem;
+    font-size: 0.85rem;
   }
 
   .install-prompt-icon {
@@ -223,26 +318,8 @@
   .install-btn-primary,
   .install-btn-secondary {
     width: 100%;
-    padding: 12px 20px;
-    font-size: 0.95rem;
-  }
-}
-
-@media (max-width: 480px) {
-  .install-prompt {
-    padding: 15px;
-  }
-
-  .install-prompt-text h3 {
-    font-size: 1.1rem;
-  }
-
-  .install-prompt-text p {
-    font-size: 0.85rem;
-  }
-
-  .install-prompt-icon {
-    font-size: 40px;
+    padding: 12px 18px;
+    font-size: 0.9rem;
   }
 }
 

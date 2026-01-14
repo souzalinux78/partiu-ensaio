@@ -337,12 +337,12 @@ const InstallPrompt = () => {
         <div className="install-prompt-content">
           <div className="install-prompt-icon">📱</div>
           <div className="install-prompt-text">
-            <h3>📱 Instale o App!</h3>
+            <h3>✨ Instale o App!</h3>
             <p>
               {isIOS 
                 ? 'Adicione à tela inicial para acesso rápido, notificações e uso offline!'
                 : isMobile
-                ? 'Instale o Partiu Ensaio para acesso rápido, notificações e uso offline!'
+                ? 'Instale o Partiu Ensaio para acesso rápido, notificações e melhor experiência!'
                 : 'Instale o Partiu Ensaio para acesso rápido e melhor experiência!'
               }
             </p>

@@ -1,5 +1,5 @@
-const CACHE_NAME = 'partiu-ensaio-v5';
-const RUNTIME_CACHE = 'partiu-ensaio-runtime-v5';
+const CACHE_NAME = 'partiu-ensaio-v6';
+const RUNTIME_CACHE = 'partiu-ensaio-runtime-v6';
 
 // Arquivos estáticos para cache inicial
 const STATIC_CACHE_URLS = [
