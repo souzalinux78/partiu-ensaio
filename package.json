@@ -9,7 +9,9 @@
     "client": "cd client && npm start",
     "install-all": "npm install && cd server && npm install && cd ../client && npm install",
     "generate-icons": "node ./scripts/generate-icons.js",
-    "update-theme-colors": "node ./scripts/atualizar-cores-tema.js"
+    "update-theme-colors": "node ./scripts/atualizar-cores-tema.js",
+    "update-theme-colors:help": "echo 'Use: npm run update-theme-colors \"#COR1\" \"#COR2\" ou npm run update-theme-colors COR1 COR2'",
+    "verificar-cores": "node ./scripts/verificar-cores.js"
   },
   "keywords": [
     "agenda",

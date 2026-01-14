@@ -7,20 +7,67 @@ const CORES_PADRAO = {
   secundaria: '#764ba2'
 };
 
-// Obter cores da linha de comando ou usar padrão
+// Função para normalizar cor (garantir que tenha #)
+function normalizarCor(cor) {
+  if (!cor) return null;
+  cor = cor.trim();
+  // Se não começar com #, adicionar
+  if (!cor.startsWith('#')) {
+    cor = '#' + cor;
+  }
+  // Validar formato hexadecimal (6 caracteres após #)
+  if (!/^#[0-9A-Fa-f]{6}$/.test(cor)) {
+    return null;
+  }
+  return cor.toUpperCase();
+}
+
+// Obter cores da linha de comando, variáveis de ambiente ou usar padrão
 const args = process.argv.slice(2);
 let cores = { ...CORES_PADRAO };
 
-if (args.length >= 2) {
-  cores.primaria = args[0];
-  cores.secundaria = args[1];
-  console.log('🎨 Usando cores fornecidas:');
-  console.log(`   Primária: ${cores.primaria}`);
-  console.log(`   Secundária: ${cores.secundaria}`);
+// Tentar obter das variáveis de ambiente primeiro (para evitar problemas com # no shell)
+const corPrimariaEnv = process.env.COR_PRIMARIA || process.env.PRIMARY_COLOR;
+const corSecundariaEnv = process.env.COR_SECUNDARIA || process.env.SECONDARY_COLOR;
+
+if (corPrimariaEnv && corSecundariaEnv) {
+  const primaria = normalizarCor(corPrimariaEnv);
+  const secundaria = normalizarCor(corSecundariaEnv);
+  if (primaria && secundaria) {
+    cores.primaria = primaria;
+    cores.secundaria = secundaria;
+    console.log('🎨 Usando cores das variáveis de ambiente:');
+    console.log(`   Primária: ${cores.primaria}`);
+    console.log(`   Secundária: ${cores.secundaria}`);
+  }
+} else if (args.length >= 2) {
+  // Tentar obter dos argumentos
+  const primaria = normalizarCor(args[0]);
+  const secundaria = normalizarCor(args[1]);
+  
+  if (primaria && secundaria) {
+    cores.primaria = primaria;
+    cores.secundaria = secundaria;
+    console.log('🎨 Usando cores fornecidas:');
+    console.log(`   Primária: ${cores.primaria}`);
+    console.log(`   Secundária: ${cores.secundaria}`);
+  } else {
+    console.log('❌ Erro: Cores inválidas fornecidas!');
+    console.log('   As cores devem estar no formato hexadecimal (ex: FF6B6B ou #FF6B6B)');
+    console.log('   Exemplo: npm run update-theme-colors FF6B6B 4ECDC4');
+    process.exit(1);
+  }
 } else {
   console.log('⚠️  Usando cores padrão. Para usar cores personalizadas:');
-  console.log('   node scripts/atualizar-cores-tema.js #COR1 #COR2');
-  console.log('   Exemplo: node scripts/atualizar-cores-tema.js #FF6B6B #4ECDC4');
+  console.log('');
+  console.log('   Opção 1 (com aspas para proteger o #):');
+  console.log('   npm run update-theme-colors "#FF6B6B" "#4ECDC4"');
+  console.log('');
+  console.log('   Opção 2 (sem #, o script adiciona automaticamente):');
+  console.log('   npm run update-theme-colors FF6B6B 4ECDC4');
+  console.log('');
+  console.log('   Opção 3 (usando variáveis de ambiente):');
+  console.log('   COR_PRIMARIA=FF6B6B COR_SECUNDARIA=4ECDC4 npm run update-theme-colors');
 }
 
 // Função para escapar caracteres especiais em regex

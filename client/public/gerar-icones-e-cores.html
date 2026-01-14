@@ -349,10 +349,12 @@
                 colorsPreview.appendChild(colorBox);
             });
             
-            // Mostrar comando
+            // Mostrar comando (sem # para facilitar)
             if (extractedColors.length >= 2) {
-                document.getElementById('color1Text').textContent = extractedColors[0];
-                document.getElementById('color2Text').textContent = extractedColors[1];
+                const cor1SemHash = extractedColors[0].replace('#', '');
+                const cor2SemHash = extractedColors[1].replace('#', '');
+                document.getElementById('color1Text').textContent = cor1SemHash;
+                document.getElementById('color2Text').textContent = cor2SemHash;
                 document.getElementById('commandInfo').style.display = 'block';
             }
             
@@ -430,7 +432,9 @@
             });
 
             // Criar arquivo de texto com as cores para copiar
-            const coresTexto = `Cores extraídas da imagem:\n\nPrimária: ${extractedColors[0]}\nSecundária: ${extractedColors[1]}\n\nPara atualizar as cores do tema, execute:\n\nnpm run update-theme-colors ${extractedColors[0]} ${extractedColors[1]}`;
+            const cor1SemHash = extractedColors[0].replace('#', '');
+            const cor2SemHash = extractedColors[1].replace('#', '');
+            const coresTexto = `Cores extraídas da imagem:\n\nPrimária: ${extractedColors[0]}\nSecundária: ${extractedColors[1]}\n\nPara atualizar as cores do tema, execute:\n\nnpm run update-theme-colors ${cor1SemHash} ${cor2SemHash}\n\nOu com aspas (se preferir usar #):\n\nnpm run update-theme-colors "${extractedColors[0]}" "${extractedColors[1]}"`;
             
             const blob = new Blob([coresTexto], { type: 'text/plain' });
             const url = URL.createObjectURL(blob);

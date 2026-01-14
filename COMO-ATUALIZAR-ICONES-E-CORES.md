@@ -58,19 +58,28 @@
 1. **Abra o terminal** na raiz do projeto
 
 2. **Execute o comando de atualização:**
+   
+   **Opção 1 (Recomendada - sem #):**
    ```bash
-   npm run update-theme-colors #COR_PRIMARIA #COR_SECUNDARIA
+   npm run update-theme-colors FF6B6B 4ECDC4
+   ```
+   O script adiciona o `#` automaticamente!
+   
+   **Opção 2 (com # e aspas):**
+   ```bash
+   npm run update-theme-colors "#FF6B6B" "#4ECDC4"
    ```
    
-   **Exemplo:**
+   **Opção 3 (variáveis de ambiente):**
    ```bash
-   npm run update-theme-colors #FF6B6B #4ECDC4
+   COR_PRIMARIA=FF6B6B COR_SECUNDARIA=4ECDC4 npm run update-theme-colors
    ```
    
    **⚠️ IMPORTANTE:**
-   - Use o símbolo `#` antes de cada cor
    - Use as cores que você anotou no Passo 2
    - Separe as cores com um espaço
+   - Se usar `#`, coloque entre aspas para proteger do shell
+   - **Recomendado:** Use sem `#` (mais fácil e funciona sempre)
 
 3. **Verifique a saída:**
    - Você verá mensagens como: `✅ Atualizado: client/src/components/Dashboard.css`
