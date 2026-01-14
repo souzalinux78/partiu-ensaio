@@ -33,32 +33,28 @@ export const getBaseUrl = () => {
     return baseUrl;
   }
   
-  // Detectar se é dispositivo móvel
+  // Em produção, SEMPRE usar URL absoluta para evitar problemas com:
+  // - Service Worker cache
+  // - URLs relativas que podem não funcionar corretamente
+  // - Problemas de CORS
+  // - Cache do navegador
+  const protocol = window.location.protocol;
+  const currentHostname = window.location.hostname;
+  const port = window.location.port ? `:${window.location.port}` : '';
+  const baseUrl = `${protocol}//${currentHostname}${port}`;
+  
+  // Detectar contexto para log
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                       window.navigator.standalone || 
+                       document.referrer.includes('android-app://');
   const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini|mobile|tablet/i.test(
     navigator.userAgent || navigator.vendor || window.opera
   ) || window.innerWidth <= 768;
   
-  // Verificar se está rodando como PWA (standalone mode)
-  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                       window.navigator.standalone || 
-                       document.referrer.includes('android-app://');
+  const context = isStandalone ? 'PWA' : (isMobile ? 'mobile' : 'desktop');
+  console.log(`🖼️ getBaseUrl (${context}):`, baseUrl);
   
-  // Em produção, SEMPRE usar URL absoluta para:
-  // 1. PWA standalone (obrigatório)
-  // 2. Dispositivos móveis (para evitar problemas de cache/Service Worker)
-  // URLs relativas podem não funcionar corretamente no mobile/PWA
-  if (isStandalone || isMobile) {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    const port = window.location.port ? `:${window.location.port}` : '';
-    const baseUrl = `${protocol}//${hostname}${port}`;
-    console.log(`🖼️ getBaseUrl (${isStandalone ? 'PWA' : 'mobile'}):`, baseUrl);
-    return baseUrl;
-  }
-  
-  // Se não for mobile nem PWA em produção, usar URL relativa (mesmo domínio)
-  console.log('🖼️ getBaseUrl (web desktop):', '(relativo)');
-  return '';
+  return baseUrl;
 };
 
 const API_URL = getApiUrl();
