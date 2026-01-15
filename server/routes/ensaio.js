@@ -556,12 +556,12 @@ router.get('/estatisticas', authenticate, requireAdmin, (req, res) => {
             return res.status(500).json({ error: 'Erro ao buscar estatísticas por estado' });
           }
           
-          // Estatísticas por categoria de instrumento (naipes)
+          // Estatísticas por categoria de instrumento (naipes) - baseado em MÚSICOS
           db.all(
             `SELECT categoria_instrumento as naipe, COUNT(*) as total,
-             ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ensaios WHERE categoria_instrumento IS NOT NULL AND categoria_instrumento != ''), 2) as porcentagem
-             FROM ensaios 
-             WHERE categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
+             ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM users WHERE role = 'musico' AND categoria_instrumento IS NOT NULL AND categoria_instrumento != ''), 2) as porcentagem
+             FROM users 
+             WHERE role = 'musico' AND categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
              GROUP BY categoria_instrumento 
              ORDER BY total DESC`,
             [],
@@ -570,12 +570,12 @@ router.get('/estatisticas', authenticate, requireAdmin, (req, res) => {
                 return res.status(500).json({ error: 'Erro ao buscar estatísticas por naipes' });
               }
               
-              // Estatísticas por instrumento específico
+              // Estatísticas por instrumento específico - baseado em MÚSICOS
               db.all(
                 `SELECT instrumento, categoria_instrumento, COUNT(*) as total,
-                 ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM ensaios WHERE instrumento IS NOT NULL AND instrumento != ''), 2) as porcentagem
-                 FROM ensaios 
-                 WHERE instrumento IS NOT NULL AND instrumento != ''
+                 ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM users WHERE role = 'musico' AND instrumento IS NOT NULL AND instrumento != ''), 2) as porcentagem
+                 FROM users 
+                 WHERE role = 'musico' AND instrumento IS NOT NULL AND instrumento != ''
                  GROUP BY instrumento, categoria_instrumento
                  ORDER BY total DESC`,
                 [],
