@@ -99,7 +99,7 @@ const RegisterMusico = () => {
         <h1>Partiu Ensaio</h1>
         <h2>Cadastro de Músico</h2>
         {error && <div className="error-message">{error}</div>}
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit} autoComplete="on">
           <div className="form-group">
             <label htmlFor="name">Nome Completo *</label>
             <input
@@ -119,7 +119,7 @@ const RegisterMusico = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
-              autoComplete="email"
+              autoComplete="username"
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
@@ -134,6 +134,7 @@ const RegisterMusico = () => {
               name="password"
               value={formData.password}
               onChange={handleChange}
+              autoComplete="new-password"
               required
             />
           </div>
@@ -145,6 +146,7 @@ const RegisterMusico = () => {
               name="confirmPassword"
               value={formData.confirmPassword}
               onChange={handleChange}
+              autoComplete="new-password"
               required
             />
           </div>

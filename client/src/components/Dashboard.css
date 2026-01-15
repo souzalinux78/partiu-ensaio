@@ -558,6 +558,28 @@
   font-family: inherit;
   transition: all 0.3s;
   background: white;
+  background-color: #fff;
+  color: #111 !important; /* garante texto visível mesmo com autofill/dark mode */
+  color-scheme: light;
+}
+
+/* Fix autofill do Chrome (Android): mantém cor do texto e fundo */
+.form-group input:-webkit-autofill,
+.form-group input:-webkit-autofill:hover,
+.form-group input:-webkit-autofill:focus,
+.form-group input:-webkit-autofill:active,
+.form-group textarea:-webkit-autofill,
+.form-group textarea:-webkit-autofill:hover,
+.form-group textarea:-webkit-autofill:focus,
+.form-group textarea:-webkit-autofill:active,
+.form-group select:-webkit-autofill,
+.form-group select:-webkit-autofill:hover,
+.form-group select:-webkit-autofill:focus,
+.form-group select:-webkit-autofill:active {
+  -webkit-text-fill-color: #111 !important;
+  caret-color: #111 !important;
+  transition: background-color 9999s ease-in-out 0s;
+  box-shadow: 0 0 0 1000px #fff inset !important;
 }
 
 .form-group input:focus,
@@ -566,6 +588,7 @@
   outline: none;
   border-color: #D4AF37;
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  color: #111 !important;
 }
 
 .form-group input[readonly] {

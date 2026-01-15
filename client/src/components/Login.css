@@ -7,6 +7,8 @@
   padding: 20px;
   position: relative;
   overflow: hidden;
+  /* Evita que o Chrome/Android renderize inputs em "dark controls" */
+  color-scheme: light;
 }
 
 .auth-container::before {
@@ -76,12 +78,28 @@
   font-size: 16px;
   transition: all 0.3s;
   background: #f7fafc;
+  background-color: #f7fafc;
+  color: #111 !important; /* garante texto visível mesmo com autofill/dark mode */
+  color-scheme: light;
+}
+
+/* Fix autofill do Chrome (Android): mantém cor do texto e fundo */
+.form-group input:-webkit-autofill,
+.form-group input:-webkit-autofill:hover,
+.form-group input:-webkit-autofill:focus,
+.form-group input:-webkit-autofill:active {
+  -webkit-text-fill-color: #111 !important;
+  caret-color: #111 !important;
+  transition: background-color 9999s ease-in-out 0s;
+  box-shadow: 0 0 0 1000px #f7fafc inset !important;
 }
 
 .form-group input:focus {
   outline: none;
   border-color: #D4AF37;
   background: white;
+  background-color: #fff;
+  color: #111 !important;
   box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.2);
 }
 
