@@ -560,29 +560,6 @@ const DashboardAdmin = ({ user, onLogout }) => {
                 </div>
               ) : (
                 <div style={{ width: '100%', overflowX: 'auto' }}>
-                  {todosUsuarios
-                    .filter((u) => {
-                      const q = (usuariosFiltro || '').trim().toLowerCase();
-                      if (!q) return true;
-                      const hay = [
-                        u.name,
-                        u.email,
-                        u.celular,
-                        u.igrejas,
-                        u.role,
-                        u.instrumento,
-                        u.categoria_instrumento,
-                        u.cidade,
-                        u.estado,
-                        u.tipo
-                      ]
-                        .filter(Boolean)
-                        .join(' ')
-                        .toLowerCase();
-                      return hay.includes(q);
-                    })
-                    ;}
-
                   <table style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
