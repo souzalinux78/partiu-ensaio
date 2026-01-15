@@ -13,101 +13,12 @@ const DashboardMusico = ({ user, onLogout }) => {
   const [processandoInteresse, setProcessandoInteresse] = useState({});
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
   const [showReport, setShowReport] = useState(false);
-  const [google, setGoogle] = useState({ loading: true, connected: false, email: null });
-  const isStandalone =
-    window.matchMedia?.('(display-mode: standalone)')?.matches ||
-    window.navigator.standalone ||
-    document.referrer.includes('android-app://');
 
   useEffect(() => {
     loadEnsaios();
     // Registrar push (somente se o usuário permitir notificações)
     ensurePushSubscription().catch(() => {});
-    refreshGoogleStatus();
-
-    // Se voltou do OAuth (callback redireciona para /dashboard?google=connected),
-    // atualizar status e limpar a query string para não ficar "travado" em cache.
-    try {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('google') === 'connected') {
-        refreshGoogleStatus();
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-    } catch {}
   }, []);
-
-  const refreshGoogleStatus = async () => {
-    try {
-      const r = await api.get('/google/status');
-      setGoogle({ loading: false, connected: !!r.data.connected, email: r.data.google_email || null });
-    } catch {
-      setGoogle({ loading: false, connected: false, email: null });
-    }
-  };
-
-  const buildGoogleCalendarUrl = (ensaio) => {
-    const data = ensaio.proxima_data;
-    const horario = ensaio.horario || '20:00:00';
-    if (!data) return null;
-
-    const ensaioId = ensaio.id_original || ensaio.id;
-
-    const toGoogleDateTime = (dateStr, timeStr) => {
-      const [y, m, d] = dateStr.split('-');
-      const [hh, mm, ssRaw] = String(timeStr).split(':');
-      const ss = ssRaw ? ssRaw : '00';
-      return `${y}${m}${d}T${hh}${mm}${ss}`;
-    };
-
-    const addHoursToTime = (timeStr, hoursToAdd) => {
-      const [hhRaw, mmRaw, ssRaw] = String(timeStr).split(':');
-      const hh = parseInt(hhRaw || '0', 10);
-      const mm = parseInt(mmRaw || '0', 10);
-      const ss = parseInt(ssRaw || '0', 10);
-      const total = hh * 3600 + mm * 60 + ss + hoursToAdd * 3600;
-      const hh2 = String(Math.floor((total % 86400) / 3600)).padStart(2, '0');
-      const mm2 = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
-      const ss2 = String(total % 60).padStart(2, '0');
-      return `${hh2}:${mm2}:${ss2}`;
-    };
-
-    const endHorario = addHoursToTime(horario, 2);
-
-    const text = `Ensaio - ${ensaio.nome_igreja || ensaio.local || 'Igreja'}`;
-    const location = `${ensaio.endereco || ''}${ensaio.cidade ? ` - ${ensaio.cidade}` : ''}${ensaio.estado ? `/${ensaio.estado}` : ''}`.trim();
-    const details = [
-      'Partiu Ensaio - Interesse confirmado',
-      `Data: ${data}`,
-      `Horário: ${horario}`,
-      `Igreja: ${ensaio.nome_igreja || ensaio.local || 'N/A'}`,
-      `Endereço: ${ensaio.endereco || 'N/A'}`,
-      `Cidade/UF: ${ensaio.cidade || 'N/A'}${ensaio.estado ? `/${ensaio.estado}` : ''}`,
-      `Encarregado: ${ensaio.nome_encarregado || ensaio.encarregado_name || 'N/A'}`,
-      `Contato: ${ensaio.celular || 'N/A'}`,
-      ensaioId ? `Ensaio ID: ${ensaioId}` : null
-    ].filter(Boolean).join('\n');
-
-    const dates = `${toGoogleDateTime(data, horario)}/${toGoogleDateTime(data, endHorario)}`;
-
-    const params = new URLSearchParams({
-      action: 'TEMPLATE',
-      text,
-      dates,
-      details,
-      location,
-      ctz: 'America/Sao_Paulo'
-    });
-
-    return `https://calendar.google.com/calendar/render?${params.toString()}`;
-  };
-
-  const openGoogleCalendar = (ensaio) => {
-    const url = buildGoogleCalendarUrl(ensaio);
-    if (!url) return;
-    const w = window.open(url, '_blank', 'noopener,noreferrer');
-    // fallback se o navegador bloquear pop-up
-    if (!w) window.location.href = url;
-  };
 
   const downloadIcs = async (ensaio) => {
     try {
@@ -128,24 +39,6 @@ const DashboardMusico = ({ user, onLogout }) => {
       window.URL.revokeObjectURL(blobUrl);
     } catch (e) {
       alert('Não foi possível baixar o .ics. Tente novamente.');
-    }
-  };
-
-  const connectGoogle = async () => {
-    try {
-      const r = await api.get('/google/auth');
-      if (r.data?.url) window.location.href = r.data.url;
-    } catch (e) {
-      alert(e.response?.data?.error || 'Erro ao conectar Google Agenda');
-    }
-  };
-
-  const disconnectGoogle = async () => {
-    try {
-      await api.post('/google/disconnect');
-      setGoogle({ loading: false, connected: false, email: null });
-    } catch (e) {
-      alert(e.response?.data?.error || 'Erro ao desconectar Google Agenda');
     }
   };
 
@@ -208,17 +101,8 @@ const DashboardMusico = ({ user, onLogout }) => {
         await api.post(`/interesse/${ensaioId}`, { data_ensaio: dataEnsaio });
         setInteresses({ ...interesses, [chave]: true });
 
-        // Se Google Agenda estiver conectado, cria o evento sem sair do PWA.
-        // Caso contrário, mantém o botão manual para abrir o link.
-        if (google.connected) {
-          try {
-            await api.post('/google/create-event', { ensaioId, data_ensaio: dataEnsaio });
-            // feedback simples sem interromper o fluxo
-            console.log('✅ Evento adicionado ao Google Agenda (sem sair do PWA)');
-          } catch (e) {
-            console.warn('Falha ao criar evento no Google Agenda:', e);
-          }
-        }
+        // Agenda (sem OAuth): baixar .ics para o usuário adicionar no calendário
+        await downloadIcs(ensaio);
       }
     } catch (err) {
       console.error('Erro ao processar interesse:', err);
@@ -256,17 +140,6 @@ const DashboardMusico = ({ user, onLogout }) => {
           <div className="header-actions">
             <span className="user-name">Olá, {user.name}</span>
             <Link to="/" className="btn-link">Ver Público</Link>
-            {google.loading ? (
-              <button className="btn-link" disabled>Google Agenda...</button>
-            ) : google.connected ? (
-              <button className="btn-link" onClick={disconnectGoogle} title={google.email || 'Conectado'}>
-                Desconectar Google
-              </button>
-            ) : (
-              <button className="btn-link" onClick={connectGoogle}>
-                Conectar Google Agenda
-              </button>
-            )}
             <button onClick={() => setShowReport(true)} className="btn-link">Reportar problema</button>
             <button onClick={() => setShowAlterarSenha(true)} className="btn-link">Alterar Senha</button>
             <button onClick={onLogout} className="btn-secondary">Sair</button>
@@ -402,39 +275,15 @@ const DashboardMusico = ({ user, onLogout }) => {
                               : 'Tenho Interesse'}
                           </button>
                         )}
-                        {/* No PWA (standalone), evitar botão externo (faz "sair" do app).
-                            Se estiver conectado, cria via API sem sair.
-                            Se não estiver conectado, oferecemos "Conectar Google" e alternativa .ics. */}
-                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && !google.connected && !isStandalone && (
+                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && (
                           <button
-                            onClick={() => openGoogleCalendar(ensaio)}
+                            onClick={() => downloadIcs(ensaio)}
                             className="btn-link"
                             style={{ marginLeft: '10px' }}
-                            title="Abrir Google Agenda já preenchido"
+                            title="Baixar .ics e adicionar no Calendário"
                           >
-                            Adicionar no Google Agenda
+                            Baixar .ics
                           </button>
-                        )}
-
-                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && !google.connected && isStandalone && (
-                          <>
-                            <button
-                              onClick={connectGoogle}
-                              className="btn-link"
-                              style={{ marginLeft: '10px' }}
-                              title="Conectar para adicionar automaticamente sem sair do PWA"
-                            >
-                              Conectar Google (recomendado)
-                            </button>
-                            <button
-                              onClick={() => downloadIcs(ensaio)}
-                              className="btn-link"
-                              style={{ marginLeft: '10px' }}
-                              title="Baixar .ics e adicionar no Calendário sem sair do app"
-                            >
-                              Baixar .ics
-                            </button>
-                          </>
                         )}
                       </div>
                     </div>
