@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api, { getBaseUrl } from '../utils/api';
 import { instrumentos, getCategoriaInstrumento } from '../utils/instrumentos';
 import AlterarSenha from './AlterarSenha';
+import ReportarProblema from './ReportarProblema';
 import './Dashboard.css';
 
 const DashboardEncarregado = ({ user, onLogout }) => {
@@ -12,6 +13,7 @@ const DashboardEncarregado = ({ user, onLogout }) => {
   const [editingId, setEditingId] = useState(null);
   const [interessesModal, setInteressesModal] = useState({ ensaioId: null, interesses: [], loading: false });
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
+  const [showReport, setShowReport] = useState(false);
   const [formData, setFormData] = useState({
     nome_encarregado: '',
     tipo: '',
@@ -337,6 +339,7 @@ const DashboardEncarregado = ({ user, onLogout }) => {
           <div className="header-actions">
             <span className="user-name">Olá, {user.name}</span>
             <Link to="/" className="btn-link">Ver Público</Link>
+            <button onClick={() => setShowReport(true)} className="btn-link">Reportar problema</button>
             <button onClick={() => setShowAlterarSenha(true)} className="btn-link">Alterar Senha</button>
             <button onClick={onLogout} className="btn-secondary">Sair</button>
           </div>
@@ -816,6 +819,11 @@ const DashboardEncarregado = ({ user, onLogout }) => {
       <AlterarSenha 
         isOpen={showAlterarSenha}
         onClose={() => setShowAlterarSenha(false)}
+      />
+      <ReportarProblema
+        isOpen={showReport}
+        onClose={() => setShowReport(false)}
+        userRole="encarregado"
       />
     </div>
   );
