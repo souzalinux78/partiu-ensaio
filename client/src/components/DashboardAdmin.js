@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api, { getBaseUrl } from '../utils/api';
 import AlterarSenha from './AlterarSenha';
@@ -35,9 +35,20 @@ const DashboardAdmin = ({ user, onLogout }) => {
   const [usuarioEditando, setUsuarioEditando] = useState(null);
   const [showAlterarSenhaUsuario, setShowAlterarSenhaUsuario] = useState(false);
   const [usuarioSenha, setUsuarioSenha] = useState(null);
+  const [isMobile, setIsMobile] = useState(false);
 
   // Carregar todos os dados necessários para os contadores ao montar o componente
   useEffect(() => {
+    const mql = window.matchMedia('(max-width: 768px)');
+    const syncIsMobile = () => setIsMobile(!!mql.matches);
+    syncIsMobile();
+    if (mql.addEventListener) {
+      mql.addEventListener('change', syncIsMobile);
+    } else {
+      // Safari antigo
+      mql.addListener(syncIsMobile);
+    }
+
     const loadAllData = async () => {
       setLoading(true);
       try {
@@ -67,8 +78,38 @@ const DashboardAdmin = ({ user, onLogout }) => {
       loadEstatisticas();
     }, 30000);
     
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      if (mql.removeEventListener) {
+        mql.removeEventListener('change', syncIsMobile);
+      } else {
+        mql.removeListener(syncIsMobile);
+      }
+    };
   }, []);
+
+  const filteredUsuarios = useMemo(() => {
+    const q = (usuariosFiltro || '').trim().toLowerCase();
+    if (!q) return todosUsuarios || [];
+    return (todosUsuarios || []).filter((u) => {
+      const hay = [
+        u.name,
+        u.email,
+        u.celular,
+        u.igrejas,
+        u.role,
+        u.instrumento,
+        u.categoria_instrumento,
+        u.cidade,
+        u.estado,
+        u.tipo
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [todosUsuarios, usuariosFiltro]);
 
   // Carregar dados específicos da aba quando ela mudar
   useEffect(() => {
@@ -542,9 +583,10 @@ const DashboardAdmin = ({ user, onLogout }) => {
                     flex: '1 1 320px',
                     padding: '10px 12px',
                     borderRadius: 10,
-                    border: '1px solid rgba(255,255,255,0.16)',
-                    background: 'rgba(255,255,255,0.06)',
-                    color: '#fff'
+                    border: '1px solid rgba(0,0,0,0.18)',
+                    background: '#fff',
+                    color: '#111',
+                    boxShadow: '0 1px 2px rgba(0,0,0,0.06)'
                   }}
                 />
                 <button onClick={loadTodosUsuarios} className="btn-secondary">
@@ -559,88 +601,141 @@ const DashboardAdmin = ({ user, onLogout }) => {
                   <p>Não há usuários cadastrados.</p>
                 </div>
               ) : (
-                <div style={{ width: '100%', overflowX: 'auto' }}>
-                  <table style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
-                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Nome</th>
-                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Celular</th>
-                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Igreja(s)</th>
-                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Perfil</th>
-                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Status</th>
-                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {todosUsuarios
-                        .filter((u) => {
-                          const q = (usuariosFiltro || '').trim().toLowerCase();
-                          if (!q) return true;
-                          const hay = [
-                            u.name,
-                            u.email,
-                            u.celular,
-                            u.igrejas,
-                            u.role,
-                            u.instrumento,
-                            u.categoria_instrumento,
-                            u.cidade,
-                            u.estado,
-                            u.tipo
-                          ]
-                            .filter(Boolean)
-                            .join(' ')
-                            .toLowerCase();
-                          return hay.includes(q);
-                        })
-                        .map((u) => (
-                          <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
-                            <td style={{ padding: '10px 8px' }}>
-                              <div style={{ fontWeight: 700, color: '#fff' }}>{u.name}</div>
-                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>{u.email}</div>
-                            </td>
-                            <td style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>
-                              {u.celular || '—'}
-                            </td>
-                            <td style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>
-                              {u.igrejas || '—'}
-                            </td>
-                            <td style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>
-                              {u.role}
-                              {u.role === 'encarregado' && u.tipo ? ` (${u.tipo})` : ''}
-                            </td>
-                            <td style={{ padding: '10px 8px' }}>
-                              <span className={`status-badge ${u.aprovado ? 'status-aprovado' : 'status-pendente'}`}>
-                                {u.aprovado ? 'Aprovado' : 'Pendente'}
-                              </span>
-                            </td>
-                            <td style={{ padding: '10px 8px' }}>
-                              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
-                                <button
-                                  className="btn-secondary"
-                                  onClick={() => {
-                                    setUsuarioEditando(u);
-                                    setShowEditarUsuario(true);
-                                  }}
-                                >
-                                  ✎ Editar
-                                </button>
-                                <button
-                                  className="btn-link"
-                                  onClick={() => {
-                                    setUsuarioSenha(u);
-                                    setShowAlterarSenhaUsuario(true);
-                                  }}
-                                >
-                                  Alterar Senha
-                                </button>
-                              </div>
-                            </td>
+                <>
+                  {isMobile ? (
+                    <div style={{ display: 'grid', gap: 10 }}>
+                      {filteredUsuarios.map((u) => (
+                        <div
+                          key={u.id}
+                          style={{
+                            background: '#fff',
+                            border: '1px solid rgba(0,0,0,0.10)',
+                            borderRadius: 12,
+                            padding: 12
+                          }}
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'flex-start' }}>
+                            <div style={{ minWidth: 0 }}>
+                              <div style={{ fontWeight: 800, color: '#111', wordBreak: 'break-word' }}>{u.name}</div>
+                              <div style={{ fontSize: 12, color: '#555', wordBreak: 'break-word' }}>{u.email}</div>
+                            </div>
+                            <span className={`status-badge ${u.aprovado ? 'status-aprovado' : 'status-pendente'}`}>
+                              {u.aprovado ? 'Aprovado' : 'Pendente'}
+                            </span>
+                          </div>
+
+                          <div style={{ marginTop: 8, display: 'grid', gap: 6, color: '#111' }}>
+                            <div><strong>Celular:</strong> {u.celular || '—'}</div>
+                            <div><strong>Igreja(s):</strong> {u.igrejas || '—'}</div>
+                            <div>
+                              <strong>Perfil:</strong> {u.role}{u.role === 'encarregado' && u.tipo ? ` (${u.tipo})` : ''}
+                            </div>
+                          </div>
+
+                          <div style={{ marginTop: 10, display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                            <button
+                              className="btn-secondary"
+                              style={{
+                                background: 'linear-gradient(135deg, #D4AF37 0%, #b8942e 100%)',
+                                color: '#111',
+                                border: 'none',
+                                flex: '1 1 140px'
+                              }}
+                              onClick={() => {
+                                setUsuarioEditando(u);
+                                setShowEditarUsuario(true);
+                              }}
+                            >
+                              ✎ Editar
+                            </button>
+                            <button
+                              className="btn-secondary"
+                              style={{
+                                background: '#111',
+                                color: '#fff',
+                                border: 'none',
+                                flex: '1 1 160px'
+                              }}
+                              onClick={() => {
+                                setUsuarioSenha(u);
+                                setShowAlterarSenhaUsuario(true);
+                              }}
+                            >
+                              Alterar Senha
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div style={{ width: '100%', overflowX: 'auto' }}>
+                      <table style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse', background: '#fff', borderRadius: 12, overflow: 'hidden' }}>
+                        <thead>
+                          <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+                            <th style={{ padding: '10px 10px', color: '#111', background: 'rgba(212,175,55,0.10)' }}>Nome</th>
+                            <th style={{ padding: '10px 10px', color: '#111', background: 'rgba(212,175,55,0.10)' }}>Celular</th>
+                            <th style={{ padding: '10px 10px', color: '#111', background: 'rgba(212,175,55,0.10)' }}>Igreja(s)</th>
+                            <th style={{ padding: '10px 10px', color: '#111', background: 'rgba(212,175,55,0.10)' }}>Perfil</th>
+                            <th style={{ padding: '10px 10px', color: '#111', background: 'rgba(212,175,55,0.10)' }}>Status</th>
+                            <th style={{ padding: '10px 10px', color: '#111', background: 'rgba(212,175,55,0.10)' }}>Ações</th>
                           </tr>
-                        ))}
-                    </tbody>
-                  </table>
-                </div>
+                        </thead>
+                        <tbody>
+                          {filteredUsuarios.map((u) => (
+                            <tr key={u.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                              <td style={{ padding: '10px 10px' }}>
+                                <div style={{ fontWeight: 700, color: '#111' }}>{u.name}</div>
+                                <div style={{ fontSize: 12, color: '#555' }}>{u.email}</div>
+                              </td>
+                              <td style={{ padding: '10px 10px', color: '#111' }}>
+                                {u.celular || '—'}
+                              </td>
+                              <td style={{ padding: '10px 10px', color: '#111' }}>
+                                {u.igrejas || '—'}
+                              </td>
+                              <td style={{ padding: '10px 10px', color: '#111' }}>
+                                {u.role}
+                                {u.role === 'encarregado' && u.tipo ? ` (${u.tipo})` : ''}
+                              </td>
+                              <td style={{ padding: '10px 10px' }}>
+                                <span className={`status-badge ${u.aprovado ? 'status-aprovado' : 'status-pendente'}`}>
+                                  {u.aprovado ? 'Aprovado' : 'Pendente'}
+                                </span>
+                              </td>
+                              <td style={{ padding: '10px 10px' }}>
+                                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                                  <button
+                                    className="btn-secondary"
+                                    style={{
+                                      background: 'linear-gradient(135deg, #D4AF37 0%, #b8942e 100%)',
+                                      color: '#111',
+                                      border: 'none'
+                                    }}
+                                    onClick={() => {
+                                      setUsuarioEditando(u);
+                                      setShowEditarUsuario(true);
+                                    }}
+                                  >
+                                    ✎ Editar
+                                  </button>
+                                  <button
+                                    className="btn-link"
+                                    onClick={() => {
+                                      setUsuarioSenha(u);
+                                      setShowAlterarSenhaUsuario(true);
+                                    }}
+                                  >
+                                    Alterar Senha
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           )}
