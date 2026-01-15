@@ -6,6 +6,120 @@ const axios = require('axios');
 const router = express.Router();
 const WEBHOOK_URL = 'https://webhook.automatizeonline.com.br/webhook/cadastro-ensaio';
 
+function pad2(n) {
+  return String(n).padStart(2, '0');
+}
+
+function formatUtcForIcs(date) {
+  // YYYYMMDDTHHMMSSZ
+  return (
+    date.getUTCFullYear() +
+    pad2(date.getUTCMonth() + 1) +
+    pad2(date.getUTCDate()) +
+    'T' +
+    pad2(date.getUTCHours()) +
+    pad2(date.getUTCMinutes()) +
+    pad2(date.getUTCSeconds()) +
+    'Z'
+  );
+}
+
+function escapeIcsText(value) {
+  if (!value) return '';
+  return String(value)
+    .replace(/\\/g, '\\\\')
+    .replace(/\r?\n/g, '\\n')
+    .replace(/,/g, '\\,')
+    .replace(/;/g, '\\;');
+}
+
+function parseHorarioToTime(horario) {
+  if (!horario) return '20:00:00';
+  return horario.length === 5 ? `${horario}:00` : horario;
+}
+
+function addHours(date, hours) {
+  const d = new Date(date.getTime());
+  d.setHours(d.getHours() + hours);
+  return d;
+}
+
+// Baixar arquivo .ics do ensaio (para adicionar no Google Agenda/Calendário)
+router.get('/:ensaioId/ics', authenticate, (req, res) => {
+  const { ensaioId } = req.params;
+  const { data_ensaio } = req.query;
+  const db = getDb();
+
+  if (req.user.role !== 'musico') {
+    return res.status(403).json({ error: 'Apenas músicos podem baixar o arquivo .ics' });
+  }
+
+  if (!data_ensaio) {
+    return res.status(400).json({ error: 'Data do ensaio é obrigatória' });
+  }
+
+  db.get('SELECT * FROM ensaios WHERE id = ?', [ensaioId], (err, ensaio) => {
+    if (err) return res.status(500).json({ error: 'Erro ao buscar ensaio' });
+    if (!ensaio) return res.status(404).json({ error: 'Ensaio não encontrado' });
+    if (ensaio.status !== 'aprovado') return res.status(400).json({ error: 'Apenas ensaios aprovados podem gerar .ics' });
+
+    const timeZone = process.env.APP_TIMEZONE || 'America/Sao_Paulo';
+    const horario = parseHorarioToTime(ensaio.horario);
+
+    // Gera Date local a partir de string ISO-like; o offset real depende do ambiente,
+    // mas para .ics usaremos UTC (Z) via toISOString/UTC getters.
+    const startLocal = new Date(`${data_ensaio}T${horario}`);
+    if (Number.isNaN(startLocal.getTime())) {
+      return res.status(400).json({ error: 'Data/horário inválidos para gerar .ics' });
+    }
+    const endLocal = addHours(startLocal, 2);
+
+    const dtstamp = formatUtcForIcs(new Date());
+    const dtstart = formatUtcForIcs(startLocal);
+    const dtend = formatUtcForIcs(endLocal);
+
+    const uid = `ensaio-${ensaioId}-${data_ensaio}-musico-${req.user.id}@partiuensaio`;
+    const summary = `Ensaio - ${ensaio.nome_igreja || ensaio.local || 'Igreja'}`;
+    const location = `${ensaio.endereco || ''}${ensaio.cidade ? ` - ${ensaio.cidade}` : ''}${ensaio.estado ? `/${ensaio.estado}` : ''}`.trim();
+    const description = [
+      'Partiu Ensaio - Interesse confirmado',
+      `Data: ${data_ensaio}`,
+      `Horário: ${horario}`,
+      `Igreja: ${ensaio.nome_igreja || ensaio.local || 'N/A'}`,
+      `Endereço: ${ensaio.endereco || 'N/A'}`,
+      `Cidade/UF: ${ensaio.cidade || 'N/A'}${ensaio.estado ? `/${ensaio.estado}` : ''}`,
+      `Encarregado: ${ensaio.nome_encarregado || 'N/A'}`,
+      `Contato: ${ensaio.celular || 'N/A'}`
+    ].join('\n');
+
+    const icsLines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Partiu Ensaio//PT-BR',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${escapeIcsText(uid)}`,
+      `DTSTAMP:${dtstamp}`,
+      `DTSTART:${dtstart}`,
+      `DTEND:${dtend}`,
+      `SUMMARY:${escapeIcsText(summary)}`,
+      location ? `LOCATION:${escapeIcsText(location)}` : null,
+      `DESCRIPTION:${escapeIcsText(description)}`,
+      'END:VEVENT',
+      'END:VCALENDAR'
+    ].filter(Boolean);
+
+    const icsContent = icsLines.join('\r\n') + '\r\n';
+    const filename = `ensaio-${ensaioId}-${data_ensaio}.ics`;
+
+    res.setHeader('Content-Type', 'text/calendar; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-store');
+    res.send(icsContent);
+  });
+});
+
 // Registrar interesse de músico em um ensaio
 router.post('/:ensaioId', authenticate, async (req, res) => {
   const { ensaioId } = req.params;

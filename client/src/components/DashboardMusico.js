@@ -73,6 +73,19 @@ const DashboardMusico = ({ user, onLogout }) => {
         // Adicionar interesse
         await api.post(`/interesse/${ensaioId}`, { data_ensaio: dataEnsaio });
         setInteresses({ ...interesses, [chave]: true });
+
+        // Baixar .ICS para o usuário adicionar no Google Agenda/Calendário
+        try {
+          const url = `/api/interesse/${ensaioId}/ics?data_ensaio=${encodeURIComponent(dataEnsaio)}`;
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `ensaio-${ensaioId}-${dataEnsaio}.ics`;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+        } catch (e) {
+          console.warn('Não foi possível iniciar download do .ics automaticamente:', e);
+        }
       }
     } catch (err) {
       console.error('Erro ao processar interesse:', err);
