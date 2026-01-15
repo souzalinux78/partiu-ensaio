@@ -1,6 +1,9 @@
+// Carregar .env da pasta server (PM2 pode iniciar com cwd diferente)
+const path = require('path');
+require('dotenv').config({ path: path.join(__dirname, '.env') });
+
 const express = require('express');
 const cors = require('cors');
-const path = require('path');
 // Escolha o banco de dados: 'database' (SQLite) ou 'database-mysql' (MySQL)
 const db = require('./database-mysql'); // Para MySQL
 // const db = require('./database'); // Para SQLite
