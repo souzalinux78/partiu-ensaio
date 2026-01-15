@@ -14,6 +14,10 @@ const DashboardMusico = ({ user, onLogout }) => {
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [google, setGoogle] = useState({ loading: true, connected: false, email: null });
+  const isStandalone =
+    window.matchMedia?.('(display-mode: standalone)')?.matches ||
+    window.navigator.standalone ||
+    document.referrer.includes('android-app://');
 
   useEffect(() => {
     loadEnsaios();
@@ -103,6 +107,28 @@ const DashboardMusico = ({ user, onLogout }) => {
     const w = window.open(url, '_blank', 'noopener,noreferrer');
     // fallback se o navegador bloquear pop-up
     if (!w) window.location.href = url;
+  };
+
+  const downloadIcs = async (ensaio) => {
+    try {
+      const ensaioId = ensaio.id_original || ensaio.id;
+      const dataEnsaio = ensaio.proxima_data;
+      if (!ensaioId || !dataEnsaio) return;
+      const res = await api.get(`/interesse/${ensaioId}/ics?data_ensaio=${encodeURIComponent(dataEnsaio)}`, {
+        responseType: 'blob'
+      });
+      const blob = new Blob([res.data], { type: 'text/calendar;charset=utf-8' });
+      const blobUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = blobUrl;
+      a.download = `ensaio-${ensaioId}-${dataEnsaio}.ics`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      alert('Não foi possível baixar o .ics. Tente novamente.');
+    }
   };
 
   const connectGoogle = async () => {
@@ -376,9 +402,10 @@ const DashboardMusico = ({ user, onLogout }) => {
                               : 'Tenho Interesse'}
                           </button>
                         )}
-                        {/* Só mostrar o botão de abrir o Google Agenda quando NÃO estiver conectado.
-                            Se estiver conectado, o evento é criado automaticamente sem sair do PWA. */}
-                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && !google.connected && (
+                        {/* No PWA (standalone), evitar botão externo (faz "sair" do app).
+                            Se estiver conectado, cria via API sem sair.
+                            Se não estiver conectado, oferecemos "Conectar Google" e alternativa .ics. */}
+                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && !google.connected && !isStandalone && (
                           <button
                             onClick={() => openGoogleCalendar(ensaio)}
                             className="btn-link"
@@ -387,6 +414,27 @@ const DashboardMusico = ({ user, onLogout }) => {
                           >
                             Adicionar no Google Agenda
                           </button>
+                        )}
+
+                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && !google.connected && isStandalone && (
+                          <>
+                            <button
+                              onClick={connectGoogle}
+                              className="btn-link"
+                              style={{ marginLeft: '10px' }}
+                              title="Conectar para adicionar automaticamente sem sair do PWA"
+                            >
+                              Conectar Google (recomendado)
+                            </button>
+                            <button
+                              onClick={() => downloadIcs(ensaio)}
+                              className="btn-link"
+                              style={{ marginLeft: '10px' }}
+                              title="Baixar .ics e adicionar no Calendário sem sair do app"
+                            >
+                              Baixar .ics
+                            </button>
+                          </>
                         )}
                       </div>
                     </div>
