@@ -297,4 +297,105 @@ router.post('/alterar-senha', authenticate, (req, res) => {
   });
 });
 
+// Listar todos os usuários (admin) - músico/encarregado/admin
+router.get('/todos', authenticate, requireAdmin, (req, res) => {
+  const db = getDb();
+  db.all(
+    `SELECT id, email, name, role, aprovado, tipo, instrumento, categoria_instrumento, celular, cidade, estado, created_at, updated_at
+     FROM users
+     ORDER BY created_at DESC`,
+    [],
+    (err, rows) => {
+      if (err) {
+        console.error('Erro ao buscar usuários:', err);
+        return res.status(500).json({ error: 'Erro ao buscar usuários' });
+      }
+      res.json(rows || []);
+    }
+  );
+});
+
+// Editar usuário (admin) - permite atualizar dados de perfil
+router.patch('/:id', authenticate, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const {
+    name,
+    email,
+    aprovado,
+    tipo,
+    instrumento,
+    categoria_instrumento,
+    celular,
+    cidade,
+    estado
+  } = req.body || {};
+
+  const db = getDb();
+
+  // Buscar usuário alvo
+  db.get('SELECT * FROM users WHERE id = ?', [id], (err, user) => {
+    if (err) return res.status(500).json({ error: 'Erro ao buscar usuário' });
+    if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+    // Não permitir alterar role por aqui (segurança)
+    // Validar aprovado se enviado
+    if (aprovado !== undefined && aprovado !== 0 && aprovado !== 1) {
+      return res.status(400).json({ error: 'Campo aprovado inválido' });
+    }
+
+    // Validar tipo de encarregado se enviado
+    if (tipo !== undefined && tipo !== null && tipo !== '' && !['local', 'regional'].includes(String(tipo).toLowerCase())) {
+      return res.status(400).json({ error: 'Tipo deve ser local ou regional' });
+    }
+
+    const updateQuery = `
+      UPDATE users SET
+        name = ?,
+        email = ?,
+        aprovado = ?,
+        tipo = ?,
+        instrumento = ?,
+        categoria_instrumento = ?,
+        celular = ?,
+        cidade = ?,
+        estado = ?,
+        updated_at = CURRENT_TIMESTAMP
+      WHERE id = ?
+    `;
+
+    const values = [
+      name !== undefined ? name : user.name,
+      email !== undefined ? email : user.email,
+      aprovado !== undefined ? aprovado : user.aprovado,
+      tipo !== undefined ? (tipo ? String(tipo).toLowerCase() : null) : user.tipo,
+      instrumento !== undefined ? (instrumento || null) : user.instrumento,
+      categoria_instrumento !== undefined ? (categoria_instrumento || null) : user.categoria_instrumento,
+      celular !== undefined ? (celular || null) : user.celular,
+      cidade !== undefined ? (cidade || null) : user.cidade,
+      estado !== undefined ? (estado || null) : user.estado,
+      id
+    ];
+
+    db.run(updateQuery, values, function (err) {
+      if (err) {
+        console.error('Erro ao atualizar usuário:', err);
+        // MySQL: email duplicado
+        if (String(err.message || '').includes('Duplicate') || String(err.code || '').includes('DUP')) {
+          return res.status(400).json({ error: 'Email já está em uso' });
+        }
+        return res.status(500).json({ error: 'Erro ao atualizar usuário' });
+      }
+
+      db.get(
+        'SELECT id, email, name, role, aprovado, tipo, instrumento, categoria_instrumento, celular, cidade, estado, created_at, updated_at FROM users WHERE id = ?',
+        [id],
+        (err, updated) => {
+          if (err) return res.status(500).json({ error: 'Erro ao buscar usuário atualizado' });
+          res.json(updated);
+        }
+      );
+    });
+  });
+});
+
 module.exports = router;

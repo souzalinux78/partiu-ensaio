@@ -1,0 +1,127 @@
+.editar-usuario-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 16px;
+}
+
+.editar-usuario-modal {
+  width: 100%;
+  max-width: 720px;
+  background: linear-gradient(180deg, #1a1a1a 0%, #0f0f0f 100%);
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 14px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.55);
+  color: #fff;
+  overflow: hidden;
+}
+
+.editar-usuario-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.editar-usuario-header h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+
+.editar-usuario-close {
+  background: transparent;
+  border: none;
+  color: #fff;
+  font-size: 1.6rem;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.editar-usuario-subtitle {
+  display: flex;
+  gap: 16px;
+  padding: 10px 16px 0 16px;
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 0.9rem;
+}
+
+.editar-usuario-form {
+  padding: 16px;
+}
+
+.editar-usuario-form .form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.editar-usuario-form .form-row .form-group {
+  margin-bottom: 12px;
+}
+
+.editar-usuario-form label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.editar-usuario-form input,
+.editar-usuario-form select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  outline: none;
+}
+
+.editar-usuario-form input:focus,
+.editar-usuario-form select:focus {
+  border-color: rgba(212, 175, 55, 0.7);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.18);
+}
+
+.editar-usuario-form .form-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.editar-usuario-form .btn-cancel,
+.editar-usuario-form .btn-submit {
+  padding: 10px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  cursor: pointer;
+}
+
+.editar-usuario-form .btn-cancel {
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.editar-usuario-form .btn-submit {
+  background: linear-gradient(135deg, #D4AF37 0%, #b8942e 100%);
+  color: #111;
+  border: none;
+  font-weight: 700;
+}
+
+@media (max-width: 720px) {
+  .editar-usuario-form .form-row {
+    grid-template-columns: 1fr;
+  }
+  .editar-usuario-subtitle {
+    flex-direction: column;
+    gap: 6px;
+  }
+}
+

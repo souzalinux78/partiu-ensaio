@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api, { getBaseUrl } from '../utils/api';
 import AlterarSenha from './AlterarSenha';
+import EditarUsuario from './EditarUsuario';
 import './Dashboard.css';
 
 const DashboardAdmin = ({ user, onLogout }) => {
@@ -28,6 +29,12 @@ const DashboardAdmin = ({ user, onLogout }) => {
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(null);
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
+  const [todosUsuarios, setTodosUsuarios] = useState([]);
+  const [usuariosFiltro, setUsuariosFiltro] = useState('');
+  const [showEditarUsuario, setShowEditarUsuario] = useState(false);
+  const [usuarioEditando, setUsuarioEditando] = useState(null);
+  const [showAlterarSenhaUsuario, setShowAlterarSenhaUsuario] = useState(false);
+  const [usuarioSenha, setUsuarioSenha] = useState(null);
 
   // Carregar todos os dados necessários para os contadores ao montar o componente
   useEffect(() => {
@@ -39,6 +46,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
           loadEnsaiosPendentes(),
           loadTodosEnsaios(),
           loadTodosPendentes(),
+          loadTodosUsuarios(),
           loadEstatisticas()
         ]);
       } catch (err) {
@@ -55,6 +63,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
       loadEnsaiosPendentes();
       loadTodosEnsaios();
       loadTodosPendentes();
+      loadTodosUsuarios();
       loadEstatisticas();
     }, 30000);
     
@@ -112,6 +121,15 @@ const DashboardAdmin = ({ user, onLogout }) => {
       setTodosPendentes(response.data);
     } catch (err) {
       console.error('Erro ao carregar usuários pendentes:', err);
+    }
+  };
+
+  const loadTodosUsuarios = async () => {
+    try {
+      const response = await api.get('/user/todos');
+      setTodosUsuarios(response.data || []);
+    } catch (err) {
+      console.error('Erro ao carregar usuários:', err);
     }
   };
 
@@ -426,6 +444,12 @@ const DashboardAdmin = ({ user, onLogout }) => {
             >
               Usuários Pendentes ({todosPendentes.length})
             </button>
+            <button
+              className={`tab ${activeTab === 'usuarios-todos' ? 'active' : ''}`}
+              onClick={() => setActiveTab('usuarios-todos')}
+            >
+              Usuários (Todos) ({todosUsuarios.length})
+            </button>
           </div>
 
           {/* Conteúdo das Tabs */}
@@ -502,6 +526,110 @@ const DashboardAdmin = ({ user, onLogout }) => {
                       </div>
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'usuarios-todos' && (
+            <div>
+              <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 14 }}>
+                <input
+                  value={usuariosFiltro}
+                  onChange={(e) => setUsuariosFiltro(e.target.value)}
+                  placeholder="Buscar por nome, email, celular, instrumento..."
+                  style={{
+                    flex: '1 1 320px',
+                    padding: '10px 12px',
+                    borderRadius: 10,
+                    border: '1px solid rgba(255,255,255,0.16)',
+                    background: 'rgba(255,255,255,0.06)',
+                    color: '#fff'
+                  }}
+                />
+                <button onClick={loadTodosUsuarios} className="btn-secondary">
+                  Recarregar
+                </button>
+              </div>
+
+              {loading ? (
+                <div className="loading">Carregando usuários...</div>
+              ) : todosUsuarios.length === 0 ? (
+                <div className="empty-state">
+                  <p>Não há usuários cadastrados.</p>
+                </div>
+              ) : (
+                <div className="ensaios-grid">
+                  {todosUsuarios
+                    .filter((u) => {
+                      const q = (usuariosFiltro || '').trim().toLowerCase();
+                      if (!q) return true;
+                      const hay = [
+                        u.name,
+                        u.email,
+                        u.celular,
+                        u.role,
+                        u.instrumento,
+                        u.categoria_instrumento,
+                        u.cidade,
+                        u.estado,
+                        u.tipo
+                      ]
+                        .filter(Boolean)
+                        .join(' ')
+                        .toLowerCase();
+                      return hay.includes(q);
+                    })
+                    .map((u) => (
+                      <div key={u.id} className="ensaio-card">
+                        <div className="ensaio-content">
+                          <div className="ensaio-header">
+                            <h3>{u.name}</h3>
+                            <span className={`status-badge ${u.aprovado ? 'status-aprovado' : 'status-pendente'}`}>
+                              {u.aprovado ? 'Aprovado' : 'Pendente'}
+                            </span>
+                          </div>
+
+                          <div className="ensaio-info">
+                            <p><strong>Email:</strong> {u.email}</p>
+                            <p><strong>Perfil:</strong> {u.role}</p>
+                            {u.role === 'encarregado' && <p><strong>Tipo:</strong> {u.tipo || 'N/A'}</p>}
+                            {u.instrumento && (
+                              <p>
+                                <strong>Instrumento:</strong> {u.instrumento}
+                                {u.categoria_instrumento ? <span> ({u.categoria_instrumento})</span> : null}
+                              </p>
+                            )}
+                            {u.celular && <p><strong>Celular:</strong> {u.celular}</p>}
+                            {(u.cidade || u.estado) && (
+                              <p><strong>Local:</strong> {[u.cidade, u.estado].filter(Boolean).join(' - ')}</p>
+                            )}
+                            <p><strong>Cadastrado em:</strong> {new Date(u.created_at).toLocaleDateString('pt-BR')}</p>
+                          </div>
+
+                          <div className="admin-actions">
+                            <button
+                              className="btn-secondary"
+                              onClick={() => {
+                                setUsuarioEditando(u);
+                                setShowEditarUsuario(true);
+                              }}
+                            >
+                              ✎ Editar
+                            </button>
+                            <button
+                              className="btn-link"
+                              onClick={() => {
+                                setUsuarioSenha(u);
+                                setShowAlterarSenhaUsuario(true);
+                              }}
+                            >
+                              Alterar Senha
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                 </div>
               )}
             </div>
@@ -760,6 +888,28 @@ const DashboardAdmin = ({ user, onLogout }) => {
       <AlterarSenha 
         isOpen={showAlterarSenha}
         onClose={() => setShowAlterarSenha(false)}
+      />
+
+      <EditarUsuario
+        isOpen={showEditarUsuario}
+        user={usuarioEditando}
+        onClose={() => {
+          setShowEditarUsuario(false);
+          setUsuarioEditando(null);
+        }}
+        onSaved={(updated) => {
+          setTodosUsuarios((prev) => prev.map((u) => (u.id === updated.id ? { ...u, ...updated } : u)));
+        }}
+      />
+
+      <AlterarSenha
+        isOpen={showAlterarSenhaUsuario}
+        onClose={() => {
+          setShowAlterarSenhaUsuario(false);
+          setUsuarioSenha(null);
+        }}
+        userId={usuarioSenha?.id || null}
+        userName={usuarioSenha?.name || null}
       />
     </div>
   );
