@@ -537,7 +537,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
                 <input
                   value={usuariosFiltro}
                   onChange={(e) => setUsuariosFiltro(e.target.value)}
-                  placeholder="Buscar por nome, email, celular, instrumento..."
+                  placeholder="Buscar por nome, igreja ou celular..."
                   style={{
                     flex: '1 1 320px',
                     padding: '10px 12px',
@@ -559,7 +559,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
                   <p>Não há usuários cadastrados.</p>
                 </div>
               ) : (
-                <div className="ensaios-grid">
+                <div style={{ width: '100%', overflowX: 'auto' }}>
                   {todosUsuarios
                     .filter((u) => {
                       const q = (usuariosFiltro || '').trim().toLowerCase();
@@ -568,6 +568,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
                         u.name,
                         u.email,
                         u.celular,
+                        u.igrejas,
                         u.role,
                         u.instrumento,
                         u.categoria_instrumento,
@@ -580,56 +581,88 @@ const DashboardAdmin = ({ user, onLogout }) => {
                         .toLowerCase();
                       return hay.includes(q);
                     })
-                    .map((u) => (
-                      <div key={u.id} className="ensaio-card">
-                        <div className="ensaio-content">
-                          <div className="ensaio-header">
-                            <h3>{u.name}</h3>
-                            <span className={`status-badge ${u.aprovado ? 'status-aprovado' : 'status-pendente'}`}>
-                              {u.aprovado ? 'Aprovado' : 'Pendente'}
-                            </span>
-                          </div>
+                    ;}
 
-                          <div className="ensaio-info">
-                            <p><strong>Email:</strong> {u.email}</p>
-                            <p><strong>Perfil:</strong> {u.role}</p>
-                            {u.role === 'encarregado' && <p><strong>Tipo:</strong> {u.tipo || 'N/A'}</p>}
-                            {u.instrumento && (
-                              <p>
-                                <strong>Instrumento:</strong> {u.instrumento}
-                                {u.categoria_instrumento ? <span> ({u.categoria_instrumento})</span> : null}
-                              </p>
-                            )}
-                            {u.celular && <p><strong>Celular:</strong> {u.celular}</p>}
-                            {(u.cidade || u.estado) && (
-                              <p><strong>Local:</strong> {[u.cidade, u.estado].filter(Boolean).join(' - ')}</p>
-                            )}
-                            <p><strong>Cadastrado em:</strong> {new Date(u.created_at).toLocaleDateString('pt-BR')}</p>
-                          </div>
-
-                          <div className="admin-actions">
-                            <button
-                              className="btn-secondary"
-                              onClick={() => {
-                                setUsuarioEditando(u);
-                                setShowEditarUsuario(true);
-                              }}
-                            >
-                              ✎ Editar
-                            </button>
-                            <button
-                              className="btn-link"
-                              onClick={() => {
-                                setUsuarioSenha(u);
-                                setShowAlterarSenhaUsuario(true);
-                              }}
-                            >
-                              Alterar Senha
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <table style={{ width: '100%', minWidth: 980, borderCollapse: 'collapse' }}>
+                    <thead>
+                      <tr style={{ textAlign: 'left', borderBottom: '1px solid rgba(255,255,255,0.12)' }}>
+                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Nome</th>
+                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Celular</th>
+                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Igreja(s)</th>
+                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Perfil</th>
+                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Status</th>
+                        <th style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {todosUsuarios
+                        .filter((u) => {
+                          const q = (usuariosFiltro || '').trim().toLowerCase();
+                          if (!q) return true;
+                          const hay = [
+                            u.name,
+                            u.email,
+                            u.celular,
+                            u.igrejas,
+                            u.role,
+                            u.instrumento,
+                            u.categoria_instrumento,
+                            u.cidade,
+                            u.estado,
+                            u.tipo
+                          ]
+                            .filter(Boolean)
+                            .join(' ')
+                            .toLowerCase();
+                          return hay.includes(q);
+                        })
+                        .map((u) => (
+                          <tr key={u.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+                            <td style={{ padding: '10px 8px' }}>
+                              <div style={{ fontWeight: 700, color: '#fff' }}>{u.name}</div>
+                              <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.75)' }}>{u.email}</div>
+                            </td>
+                            <td style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>
+                              {u.celular || '—'}
+                            </td>
+                            <td style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>
+                              {u.igrejas || '—'}
+                            </td>
+                            <td style={{ padding: '10px 8px', color: 'rgba(255,255,255,0.9)' }}>
+                              {u.role}
+                              {u.role === 'encarregado' && u.tipo ? ` (${u.tipo})` : ''}
+                            </td>
+                            <td style={{ padding: '10px 8px' }}>
+                              <span className={`status-badge ${u.aprovado ? 'status-aprovado' : 'status-pendente'}`}>
+                                {u.aprovado ? 'Aprovado' : 'Pendente'}
+                              </span>
+                            </td>
+                            <td style={{ padding: '10px 8px' }}>
+                              <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                                <button
+                                  className="btn-secondary"
+                                  onClick={() => {
+                                    setUsuarioEditando(u);
+                                    setShowEditarUsuario(true);
+                                  }}
+                                >
+                                  ✎ Editar
+                                </button>
+                                <button
+                                  className="btn-link"
+                                  onClick={() => {
+                                    setUsuarioSenha(u);
+                                    setShowAlterarSenhaUsuario(true);
+                                  }}
+                                >
+                                  Alterar Senha
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>

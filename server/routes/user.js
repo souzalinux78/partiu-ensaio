@@ -301,9 +301,13 @@ router.post('/alterar-senha', authenticate, (req, res) => {
 router.get('/todos', authenticate, requireAdmin, (req, res) => {
   const db = getDb();
   db.all(
-    `SELECT id, email, name, role, aprovado, tipo, instrumento, categoria_instrumento, celular, cidade, estado, created_at, updated_at
-     FROM users
-     ORDER BY created_at DESC`,
+    `SELECT 
+        u.id, u.email, u.name, u.role, u.aprovado, u.tipo, u.instrumento, u.categoria_instrumento, u.celular, u.cidade, u.estado, u.created_at, u.updated_at,
+        GROUP_CONCAT(DISTINCT e.nome_igreja ORDER BY e.nome_igreja SEPARATOR ' | ') AS igrejas
+     FROM users u
+     LEFT JOIN ensaios e ON e.user_id = u.id AND e.nome_igreja IS NOT NULL AND e.nome_igreja != ''
+     GROUP BY u.id
+     ORDER BY u.created_at DESC`,
     [],
     (err, rows) => {
       if (err) {
