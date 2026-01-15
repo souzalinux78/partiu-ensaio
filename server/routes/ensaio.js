@@ -556,30 +556,88 @@ router.get('/estatisticas', authenticate, requireAdmin, (req, res) => {
             return res.status(500).json({ error: 'Erro ao buscar estatísticas por estado' });
           }
           
-          // Estatísticas por categoria de instrumento (naipes) - MÚSICOS + ENCARREGADOS (perfil) + ENSAIOS (cadastro)
+          // Estatísticas por categoria de instrumento (naipes) - sem duplicar (dedupe por celular; fallback user_id)
+          // Regra: se a mesma pessoa aparecer como músico/encarregado e/ou em múltiplos ensaios, conta 1x.
           db.all(
-            `SELECT naipe, COUNT(*) as total,
-             ROUND(COUNT(*) * 100.0 / (
-               SELECT COUNT(*) FROM (
-                 SELECT categoria_instrumento AS naipe
-                 FROM users
-                 WHERE role IN ('musico','encarregado') AND categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
-                 UNION ALL
-                 SELECT categoria_instrumento AS naipe
-                 FROM ensaios
-                 WHERE categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
-               ) x
-             ), 2) as porcentagem
+            `SELECT categoria_instrumento as naipe,
+                    COUNT(*) as total,
+                    ROUND(COUNT(*) * 100.0 / (
+                      SELECT COUNT(*) FROM (
+                        SELECT pessoa_key, categoria_instrumento
+                        FROM (
+                          SELECT
+                            pessoa_key,
+                            COALESCE(
+                              MAX(CASE WHEN fonte = 'user' THEN categoria_instrumento END),
+                              MAX(CASE WHEN fonte = 'ensaio' THEN categoria_instrumento END)
+                            ) AS categoria_instrumento
+                          FROM (
+                            SELECT
+                              CASE
+                                WHEN u.celular IS NOT NULL AND u.celular != ''
+                                  THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(u.celular,'(',''),')',''),' ',''),'-',''),'+',''),'.','')
+                                ELSE CONCAT('user:', u.id)
+                              END AS pessoa_key,
+                              u.categoria_instrumento,
+                              'user' AS fonte
+                            FROM users u
+                            WHERE u.role IN ('musico','encarregado')
+                              AND u.categoria_instrumento IS NOT NULL AND u.categoria_instrumento != ''
+
+                            UNION ALL
+
+                            SELECT
+                              CASE
+                                WHEN e.celular IS NOT NULL AND e.celular != ''
+                                  THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(e.celular,'(',''),')',''),' ',''),'-',''),'+',''),'.','')
+                                ELSE CONCAT('user:', e.user_id)
+                              END AS pessoa_key,
+                              e.categoria_instrumento,
+                              'ensaio' AS fonte
+                            FROM ensaios e
+                            WHERE e.categoria_instrumento IS NOT NULL AND e.categoria_instrumento != ''
+                          ) src
+                          GROUP BY pessoa_key
+                        ) picked
+                        WHERE categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
+                      ) y
+                    ), 2) AS porcentagem
              FROM (
-               SELECT categoria_instrumento AS naipe
-               FROM users
-               WHERE role IN ('musico','encarregado') AND categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
-               UNION ALL
-               SELECT categoria_instrumento AS naipe
-               FROM ensaios
-               WHERE categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
+               SELECT pessoa_key,
+                      COALESCE(
+                        MAX(CASE WHEN fonte = 'user' THEN categoria_instrumento END),
+                        MAX(CASE WHEN fonte = 'ensaio' THEN categoria_instrumento END)
+                      ) AS categoria_instrumento
+               FROM (
+                 SELECT
+                   CASE
+                     WHEN u.celular IS NOT NULL AND u.celular != ''
+                       THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(u.celular,'(',''),')',''),' ',''),'-',''),'+',''),'.','')
+                     ELSE CONCAT('user:', u.id)
+                   END AS pessoa_key,
+                   u.categoria_instrumento,
+                   'user' AS fonte
+                 FROM users u
+                 WHERE u.role IN ('musico','encarregado')
+                   AND u.categoria_instrumento IS NOT NULL AND u.categoria_instrumento != ''
+
+                 UNION ALL
+
+                 SELECT
+                   CASE
+                     WHEN e.celular IS NOT NULL AND e.celular != ''
+                       THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(e.celular,'(',''),')',''),' ',''),'-',''),'+',''),'.','')
+                     ELSE CONCAT('user:', e.user_id)
+                   END AS pessoa_key,
+                   e.categoria_instrumento,
+                   'ensaio' AS fonte
+                 FROM ensaios e
+                 WHERE e.categoria_instrumento IS NOT NULL AND e.categoria_instrumento != ''
+               ) src
+               GROUP BY pessoa_key
              ) t
-             GROUP BY naipe
+             WHERE categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
+             GROUP BY categoria_instrumento
              ORDER BY total DESC`,
             [],
             (err, porNaipe) => {
@@ -587,29 +645,90 @@ router.get('/estatisticas', authenticate, requireAdmin, (req, res) => {
                 return res.status(500).json({ error: 'Erro ao buscar estatísticas por naipes' });
               }
               
-              // Estatísticas por instrumento específico - MÚSICOS + ENCARREGADOS (perfil) + ENSAIOS (cadastro)
+              // Estatísticas por instrumento específico - sem duplicar (dedupe por celular; fallback user_id)
               db.all(
-                `SELECT instrumento, categoria_instrumento, COUNT(*) as total,
-                 ROUND(COUNT(*) * 100.0 / (
-                   SELECT COUNT(*) FROM (
-                     SELECT instrumento, categoria_instrumento
-                     FROM users
-                     WHERE role IN ('musico','encarregado') AND instrumento IS NOT NULL AND instrumento != ''
-                     UNION ALL
-                     SELECT instrumento, categoria_instrumento
-                     FROM ensaios
-                     WHERE instrumento IS NOT NULL AND instrumento != ''
-                   ) x
-                 ), 2) as porcentagem
+                `SELECT instrumento,
+                        categoria_instrumento,
+                        COUNT(*) as total,
+                        ROUND(COUNT(*) * 100.0 / (
+                          SELECT COUNT(*) FROM (
+                            SELECT pessoa_key,
+                                   COALESCE(
+                                     MAX(CASE WHEN fonte = 'user' THEN instrumento END),
+                                     MAX(CASE WHEN fonte = 'ensaio' THEN instrumento END)
+                                   ) AS instrumento
+                            FROM (
+                              SELECT
+                                CASE
+                                  WHEN u.celular IS NOT NULL AND u.celular != ''
+                                    THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(u.celular,'(',''),')',''),' ',''),'-',''),'+',''),'.','')
+                                  ELSE CONCAT('user:', u.id)
+                                END AS pessoa_key,
+                                u.instrumento,
+                                'user' AS fonte
+                              FROM users u
+                              WHERE u.role IN ('musico','encarregado')
+                                AND u.instrumento IS NOT NULL AND u.instrumento != ''
+
+                              UNION ALL
+
+                              SELECT
+                                CASE
+                                  WHEN e.celular IS NOT NULL AND e.celular != ''
+                                    THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(e.celular,'(',''),')',''),' ',''),'-',''),'+',''),'.','')
+                                  ELSE CONCAT('user:', e.user_id)
+                                END AS pessoa_key,
+                                e.instrumento,
+                                'ensaio' AS fonte
+                              FROM ensaios e
+                              WHERE e.instrumento IS NOT NULL AND e.instrumento != ''
+                            ) src
+                            GROUP BY pessoa_key
+                          ) y
+                          WHERE instrumento IS NOT NULL AND instrumento != ''
+                        ), 2) AS porcentagem
                  FROM (
-                   SELECT instrumento, categoria_instrumento
-                   FROM users
-                   WHERE role IN ('musico','encarregado') AND instrumento IS NOT NULL AND instrumento != ''
-                   UNION ALL
-                   SELECT instrumento, categoria_instrumento
-                   FROM ensaios
-                   WHERE instrumento IS NOT NULL AND instrumento != ''
+                   SELECT
+                     pessoa_key,
+                     COALESCE(
+                       MAX(CASE WHEN fonte = 'user' THEN instrumento END),
+                       MAX(CASE WHEN fonte = 'ensaio' THEN instrumento END)
+                     ) AS instrumento,
+                     COALESCE(
+                       MAX(CASE WHEN fonte = 'user' THEN categoria_instrumento END),
+                       MAX(CASE WHEN fonte = 'ensaio' THEN categoria_instrumento END)
+                     ) AS categoria_instrumento
+                   FROM (
+                     SELECT
+                       CASE
+                         WHEN u.celular IS NOT NULL AND u.celular != ''
+                           THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(u.celular,'(',''),')',''),' ',''),'-',''),'+',''),'.','')
+                         ELSE CONCAT('user:', u.id)
+                       END AS pessoa_key,
+                       u.instrumento,
+                       u.categoria_instrumento,
+                       'user' AS fonte
+                     FROM users u
+                     WHERE u.role IN ('musico','encarregado')
+                       AND u.instrumento IS NOT NULL AND u.instrumento != ''
+
+                     UNION ALL
+
+                     SELECT
+                       CASE
+                         WHEN e.celular IS NOT NULL AND e.celular != ''
+                           THEN REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(e.celular,'(',''),')',''),' ',''),'-',''),'+',''),'.','')
+                         ELSE CONCAT('user:', e.user_id)
+                       END AS pessoa_key,
+                       e.instrumento,
+                       e.categoria_instrumento,
+                       'ensaio' AS fonte
+                     FROM ensaios e
+                     WHERE e.instrumento IS NOT NULL AND e.instrumento != ''
+                   ) src
+                   GROUP BY pessoa_key
                  ) t
+                 WHERE instrumento IS NOT NULL AND instrumento != ''
                  GROUP BY instrumento, categoria_instrumento
                  ORDER BY total DESC`,
                 [],
