@@ -54,6 +54,12 @@ function msToISODuration(ms) {
   return `PT${hours}H${minutes}M`;
 }
 
+function addMinutes(date, minutes) {
+  const d = new Date(date.getTime());
+  d.setMinutes(d.getMinutes() + minutes);
+  return d;
+}
+
 // Baixar arquivo .ics do ensaio (para adicionar no Google Agenda/Calendário)
 router.get('/:ensaioId/ics', authenticate, (req, res) => {
   const { ensaioId } = req.params;
@@ -84,15 +90,13 @@ router.get('/:ensaioId/ics', authenticate, (req, res) => {
     }
     const endLocal = addHours(startLocal, 2);
 
-    // Alarmes: 10:00, 11:00 e 12:00 do dia do ensaio.
-    // Observação: o Google Agenda frequentemente ignora REPEAT/DURATION em import de .ics,
-    // então usamos 3 VALARMs com TRIGGER absoluto (DATE-TIME), que costuma funcionar melhor.
-    const alarm10 = new Date(`${data_ensaio}T10:00:00`);
-    const alarm11 = new Date(`${data_ensaio}T11:00:00`);
-    const alarm12 = new Date(`${data_ensaio}T12:00:00`);
-    const alarm10Utc = formatUtcForIcs(alarm10);
-    const alarm11Utc = formatUtcForIcs(alarm11);
-    const alarm12Utc = formatUtcForIcs(alarm12);
+    // Importante: o Google Agenda no Android costuma IGNORAR VALARM ao importar .ics
+    // e aplica o padrão "30 minutos antes".
+    // Para garantir notificação às 10:00, 11:00 e 12:00, criamos 3 eventos curtos
+    // às 10:30, 11:30 e 12:30 (assim o padrão 30min antes vira 10:00, 11:00, 12:00).
+    const remind1Start = new Date(`${data_ensaio}T10:30:00`);
+    const remind2Start = new Date(`${data_ensaio}T11:30:00`);
+    const remind3Start = new Date(`${data_ensaio}T12:30:00`);
 
     const dtstamp = formatUtcForIcs(new Date());
     const dtstart = formatUtcForIcs(startLocal);
@@ -112,36 +116,54 @@ router.get('/:ensaioId/ics', authenticate, (req, res) => {
       `Contato: ${ensaio.celular || 'N/A'}`
     ].join('\n');
 
+    const mkEvent = ({ uid, dtstart, dtend, summary, location, description, transparent }) => {
+      return [
+        'BEGIN:VEVENT',
+        `UID:${escapeIcsText(uid)}`,
+        `DTSTAMP:${dtstamp}`,
+        `DTSTART:${dtstart}`,
+        `DTEND:${dtend}`,
+        `SUMMARY:${escapeIcsText(summary)}`,
+        location ? `LOCATION:${escapeIcsText(location)}` : null,
+        `DESCRIPTION:${escapeIcsText(description)}`,
+        transparent ? 'TRANSP:TRANSPARENT' : null,
+        'END:VEVENT'
+      ].filter(Boolean);
+    };
+
+    const reminderDesc = `Lembrete (Partiu Ensaio): hoje tem ensaio às ${horario}`;
+    const mkReminderEvent = (idx, startDate) => {
+      const startUtc = formatUtcForIcs(startDate);
+      const endUtc = formatUtcForIcs(addMinutes(startDate, 5));
+      return mkEvent({
+        uid: `ensaio-${ensaioId}-${data_ensaio}-reminder-${idx}-musico-${req.user.id}@partiuensaio`,
+        dtstart: startUtc,
+        dtend: endUtc,
+        summary: `Lembrete ${idx}/3 - ${ensaio.nome_igreja || ensaio.local || 'Ensaio'}`,
+        location: '',
+        description: reminderDesc,
+        transparent: true
+      });
+    };
+
     const icsLines = [
       'BEGIN:VCALENDAR',
       'VERSION:2.0',
       'PRODID:-//Partiu Ensaio//PT-BR',
       'CALSCALE:GREGORIAN',
       'METHOD:PUBLISH',
-      'BEGIN:VEVENT',
-      `UID:${escapeIcsText(uid)}`,
-      `DTSTAMP:${dtstamp}`,
-      `DTSTART:${dtstart}`,
-      `DTEND:${dtend}`,
-      `SUMMARY:${escapeIcsText(summary)}`,
-      location ? `LOCATION:${escapeIcsText(location)}` : null,
-      `DESCRIPTION:${escapeIcsText(description)}`,
-      'BEGIN:VALARM',
-      `TRIGGER;VALUE=DATE-TIME:${alarm10Utc}`,
-      'ACTION:DISPLAY',
-      `DESCRIPTION:${escapeIcsText('Lembrete 1/3: ensaio hoje (Partiu Ensaio)')}`,
-      'END:VALARM',
-      'BEGIN:VALARM',
-      `TRIGGER;VALUE=DATE-TIME:${alarm11Utc}`,
-      'ACTION:DISPLAY',
-      `DESCRIPTION:${escapeIcsText('Lembrete 2/3: ensaio hoje (Partiu Ensaio)')}`,
-      'END:VALARM',
-      'BEGIN:VALARM',
-      `TRIGGER;VALUE=DATE-TIME:${alarm12Utc}`,
-      'ACTION:DISPLAY',
-      `DESCRIPTION:${escapeIcsText('Lembrete 3/3: ensaio hoje (Partiu Ensaio)')}`,
-      'END:VALARM',
-      'END:VEVENT',
+      ...mkEvent({
+        uid,
+        dtstart,
+        dtend,
+        summary,
+        location,
+        description,
+        transparent: false
+      }),
+      ...mkReminderEvent(1, remind1Start),
+      ...mkReminderEvent(2, remind2Start),
+      ...mkReminderEvent(3, remind3Start),
       'END:VCALENDAR'
     ].filter(Boolean);
 

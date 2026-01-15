@@ -156,15 +156,27 @@ const DashboardMusico = ({ user, onLogout }) => {
                     {ensaio.foto_local && (
                       <div className="ensaio-image">
                         <img
+                          key={`img-${ensaio.id}`}
                           src={`${getBaseUrl()}${ensaio.foto_local}`}
                           alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
                           loading="lazy"
                           onError={(e) => {
-                            console.error('Erro ao carregar imagem:', `${getBaseUrl()}${ensaio.foto_local}`);
-                            e.target.style.display = 'none';
+                            // Mesmo comportamento do público: 1 retry com timestamp para vencer cache/SW
+                            const retryCount = parseInt(e.target.dataset.retryCount || '0', 10);
+                            if (retryCount >= 1) {
+                              console.error('❌ Imagem não carregou após tentativas:', `${getBaseUrl()}${ensaio.foto_local}`);
+                              e.target.style.display = 'none';
+                              return;
+                            }
+                            const baseUrl = getBaseUrl();
+                            const retryUrl = `${baseUrl}${ensaio.foto_local}?t=${Date.now()}&retry=1`;
+                            console.warn('⚠️ Erro ao carregar imagem, tentando novamente:', retryUrl);
+                            e.target.dataset.retryCount = '1';
+                            e.target.src = retryUrl;
                           }}
-                          onLoad={() => {
-                            console.log('Imagem carregada com sucesso:', `${getBaseUrl()}${ensaio.foto_local}`);
+                          onLoad={(e) => {
+                            e.target.dataset.retryCount = '0';
+                            console.log('✅ Imagem carregada:', `${getBaseUrl()}${ensaio.foto_local}`);
                           }}
                         />
                       </div>

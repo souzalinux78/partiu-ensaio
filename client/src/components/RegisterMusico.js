@@ -22,18 +22,16 @@ const RegisterMusico = () => {
   const navigate = useNavigate();
 
   const handleChange = (e) => {
-    const newFormData = {
-      ...formData,
-      [e.target.name]: e.target.value,
-    };
-    
-    // Se o campo mudado for instrumento, preencher automaticamente a categoria
-    if (e.target.name === 'instrumento') {
-      const categoria = getCategoriaInstrumento(e.target.value);
-      newFormData.categoria_instrumento = categoria || '';
-    }
-    
-    setFormData(newFormData);
+    const { name, value } = e.target;
+    setFormData((prev) => {
+      const next = { ...prev, [name]: value };
+      // Se o campo mudado for instrumento, preencher automaticamente a categoria
+      if (name === 'instrumento') {
+        const categoria = getCategoriaInstrumento(value);
+        next.categoria_instrumento = categoria || '';
+      }
+      return next;
+    });
   };
 
   const handleSubmit = async (e) => {
@@ -121,6 +119,10 @@ const RegisterMusico = () => {
               name="email"
               value={formData.email}
               onChange={handleChange}
+              autoComplete="email"
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
               required
             />
           </div>
