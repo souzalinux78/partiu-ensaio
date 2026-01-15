@@ -136,7 +136,7 @@ const RegisterMusico = () => {
               name="nome_igreja"
               value={formData.nome_igreja}
               onChange={handleChange}
-              placeholder="Ex: Paróquia São José"
+              placeholder="Ex: CCB Bairro"
               required
             />
           </div>
