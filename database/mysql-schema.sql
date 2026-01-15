@@ -85,6 +85,37 @@ CREATE TABLE IF NOT EXISTS interesses_ensaios (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 -- =====================================================
+-- TABELA: push_subscriptions (Inscrições Web Push por usuário)
+-- =====================================================
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    endpoint TEXT NOT NULL,
+    p256dh VARCHAR(255) NOT NULL,
+    auth VARCHAR(255) NOT NULL,
+    expiration_time BIGINT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_endpoint (endpoint(255)),
+    INDEX idx_user_id (user_id),
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
+-- TABELA: push_notifications_sent (Controle de envios para evitar duplicidade)
+-- slot_hour: 10, 11, 12
+-- =====================================================
+CREATE TABLE IF NOT EXISTS push_notifications_sent (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    interesse_id INT NOT NULL,
+    slot_hour INT NOT NULL,
+    sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_interesse_slot (interesse_id, slot_hour),
+    INDEX idx_slot_hour (slot_hour),
+    FOREIGN KEY (interesse_id) REFERENCES interesses_ensaios(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- =====================================================
 -- INSERIR USUÁRIO ADMIN PADRÃO
 -- =====================================================
 -- Senha: admin123 (hash bcrypt)

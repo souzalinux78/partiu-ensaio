@@ -163,6 +163,35 @@ const createTablesManually = async () => {
 
 const checkAndAddMissingColumns = async () => {
   try {
+    // Garantir tabelas de push (mesmo quando schema.sql já existe)
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS push_subscriptions (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        user_id INT NOT NULL,
+        endpoint TEXT NOT NULL,
+        p256dh VARCHAR(255) NOT NULL,
+        auth VARCHAR(255) NOT NULL,
+        expiration_time BIGINT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_endpoint (endpoint(255)),
+        INDEX idx_user_id (user_id),
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS push_notifications_sent (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        interesse_id INT NOT NULL,
+        slot_hour INT NOT NULL,
+        sent_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_interesse_slot (interesse_id, slot_hour),
+        INDEX idx_slot_hour (slot_hour),
+        FOREIGN KEY (interesse_id) REFERENCES interesses_ensaios(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+
     // Verificar se a coluna 'tipo' existe na tabela users
     const [columns] = await pool.execute(`
       SELECT COLUMN_NAME 

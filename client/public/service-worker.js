@@ -130,8 +130,8 @@ self.addEventListener('push', (event) => {
   let notificationData = {
     title: 'Partiu Ensaio',
     body: 'Você tem uma nova notificação!',
-    icon: '/icon-192.png',
-    badge: '/icon-192.png',
+    icon: '/icon-192x192.png',
+    badge: '/icon-192x192.png',
     tag: 'partiu-ensaio',
     data: {}
   };

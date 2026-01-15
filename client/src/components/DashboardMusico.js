@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api, { getBaseUrl } from '../utils/api';
 import AlterarSenha from './AlterarSenha';
+import { ensurePushSubscription } from '../utils/push';
 import './Dashboard.css';
 
 const DashboardMusico = ({ user, onLogout }) => {
@@ -13,6 +14,8 @@ const DashboardMusico = ({ user, onLogout }) => {
 
   useEffect(() => {
     loadEnsaios();
+    // Registrar push (somente se o usuário permitir notificações)
+    ensurePushSubscription().catch(() => {});
   }, []);
 
   const loadInteresses = React.useCallback(async () => {

@@ -8,6 +8,7 @@ const authRoutes = require('./routes/auth');
 const ensaioRoutes = require('./routes/ensaio');
 const userRoutes = require('./routes/user');
 const interesseRoutes = require('./routes/interesse');
+const pushRoutes = require('./routes/push');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -71,6 +72,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/ensaio', ensaioRoutes);
 app.use('/api/user', userRoutes);
 app.use('/api/interesse', interesseRoutes);
+app.use('/api/push', pushRoutes);
 
 // Inicializar banco de dados
 (async () => {
@@ -84,6 +86,10 @@ app.use('/api/interesse', interesseRoutes);
     // Iniciar sistema de notificações de ensaios
     const { iniciarVerificacaoPeriodica } = require('./utils/webhookNotificacao');
     iniciarVerificacaoPeriodica();
+
+    // Iniciar scheduler de Push (lembretes 10/11/12)
+    const { iniciarPushScheduler } = require('./utils/pushScheduler');
+    iniciarPushScheduler();
     
     app.listen(PORT, () => {
       console.log(`✅ Servidor rodando na porta ${PORT}`);
