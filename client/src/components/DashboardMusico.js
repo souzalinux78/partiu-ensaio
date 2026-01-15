@@ -76,13 +76,19 @@ const DashboardMusico = ({ user, onLogout }) => {
 
         // Baixar .ICS para o usuário adicionar no Google Agenda/Calendário
         try {
-          const url = `/api/interesse/${ensaioId}/ics?data_ensaio=${encodeURIComponent(dataEnsaio)}`;
+          const res = await api.get(
+            `/interesse/${ensaioId}/ics?data_ensaio=${encodeURIComponent(dataEnsaio)}`,
+            { responseType: 'blob' }
+          );
+          const blob = new Blob([res.data], { type: 'text/calendar;charset=utf-8' });
+          const blobUrl = window.URL.createObjectURL(blob);
           const a = document.createElement('a');
-          a.href = url;
+          a.href = blobUrl;
           a.download = `ensaio-${ensaioId}-${dataEnsaio}.ics`;
           document.body.appendChild(a);
           a.click();
           a.remove();
+          window.URL.revokeObjectURL(blobUrl);
         } catch (e) {
           console.warn('Não foi possível iniciar download do .ics automaticamente:', e);
         }
