@@ -20,6 +20,70 @@ const DashboardMusico = ({ user, onLogout }) => {
     ensurePushSubscription().catch(() => {});
   }, []);
 
+  const buildGoogleCalendarUrl = (ensaio) => {
+    const data = ensaio.proxima_data;
+    const horario = ensaio.horario || '20:00:00';
+    if (!data) return null;
+
+    const ensaioId = ensaio.id_original || ensaio.id;
+
+    const toGoogleDateTime = (dateStr, timeStr) => {
+      const [y, m, d] = dateStr.split('-');
+      const [hh, mm, ssRaw] = String(timeStr).split(':');
+      const ss = ssRaw ? ssRaw : '00';
+      return `${y}${m}${d}T${hh}${mm}${ss}`;
+    };
+
+    const addHoursToTime = (timeStr, hoursToAdd) => {
+      const [hhRaw, mmRaw, ssRaw] = String(timeStr).split(':');
+      const hh = parseInt(hhRaw || '0', 10);
+      const mm = parseInt(mmRaw || '0', 10);
+      const ss = parseInt(ssRaw || '0', 10);
+      const total = hh * 3600 + mm * 60 + ss + hoursToAdd * 3600;
+      const hh2 = String(Math.floor((total % 86400) / 3600)).padStart(2, '0');
+      const mm2 = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
+      const ss2 = String(total % 60).padStart(2, '0');
+      return `${hh2}:${mm2}:${ss2}`;
+    };
+
+    const endHorario = addHoursToTime(horario, 2);
+
+    const text = `Ensaio - ${ensaio.nome_igreja || ensaio.local || 'Igreja'}`;
+    const location = `${ensaio.endereco || ''}${ensaio.cidade ? ` - ${ensaio.cidade}` : ''}${ensaio.estado ? `/${ensaio.estado}` : ''}`.trim();
+    const details = [
+      'Partiu Ensaio - Interesse confirmado',
+      `Data: ${data}`,
+      `Horário: ${horario}`,
+      `Igreja: ${ensaio.nome_igreja || ensaio.local || 'N/A'}`,
+      `Endereço: ${ensaio.endereco || 'N/A'}`,
+      `Cidade/UF: ${ensaio.cidade || 'N/A'}${ensaio.estado ? `/${ensaio.estado}` : ''}`,
+      `Encarregado: ${ensaio.nome_encarregado || ensaio.encarregado_name || 'N/A'}`,
+      `Contato: ${ensaio.celular || 'N/A'}`,
+      ensaioId ? `Ensaio ID: ${ensaioId}` : null
+    ].filter(Boolean).join('\n');
+
+    const dates = `${toGoogleDateTime(data, horario)}/${toGoogleDateTime(data, endHorario)}`;
+
+    const params = new URLSearchParams({
+      action: 'TEMPLATE',
+      text,
+      dates,
+      details,
+      location,
+      ctz: 'America/Sao_Paulo'
+    });
+
+    return `https://calendar.google.com/calendar/render?${params.toString()}`;
+  };
+
+  const openGoogleCalendar = (ensaio) => {
+    const url = buildGoogleCalendarUrl(ensaio);
+    if (!url) return;
+    const w = window.open(url, '_blank', 'noopener,noreferrer');
+    // fallback se o navegador bloquear pop-up
+    if (!w) window.location.href = url;
+  };
+
   const loadInteresses = React.useCallback(async () => {
     const interessesMap = {};
     for (const ensaio of ensaios) {
@@ -78,6 +142,9 @@ const DashboardMusico = ({ user, onLogout }) => {
         // Adicionar interesse
         await api.post(`/interesse/${ensaioId}`, { data_ensaio: dataEnsaio });
         setInteresses({ ...interesses, [chave]: true });
+
+        // Abrir Google Agenda já preenchido (forma mais simples para usuário leigo)
+        openGoogleCalendar(ensaio);
 
         // Baixar .ICS para o usuário adicionar no Google Agenda/Calendário
         try {
@@ -267,6 +334,16 @@ const DashboardMusico = ({ user, onLogout }) => {
                               : interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`]
                               ? '✓ Tenho Interesse'
                               : 'Tenho Interesse'}
+                          </button>
+                        )}
+                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && (
+                          <button
+                            onClick={() => openGoogleCalendar(ensaio)}
+                            className="btn-link"
+                            style={{ marginLeft: '10px' }}
+                            title="Abrir Google Agenda já preenchido"
+                          >
+                            Adicionar no Google Agenda
                           </button>
                         )}
                       </div>
