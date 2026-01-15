@@ -44,6 +44,16 @@ function addHours(date, hours) {
   return d;
 }
 
+function msToISODuration(ms) {
+  // returns like PT10H or PT9H30M, rounded to minutes (ICS is fine with that)
+  const totalMinutes = Math.max(0, Math.round(ms / 60000));
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (minutes === 0) return `PT${hours}H`;
+  if (hours === 0) return `PT${minutes}M`;
+  return `PT${hours}H${minutes}M`;
+}
+
 // Baixar arquivo .ics do ensaio (para adicionar no Google Agenda/Calendário)
 router.get('/:ensaioId/ics', authenticate, (req, res) => {
   const { ensaioId } = req.params;
@@ -73,6 +83,16 @@ router.get('/:ensaioId/ics', authenticate, (req, res) => {
       return res.status(400).json({ error: 'Data/horário inválidos para gerar .ics' });
     }
     const endLocal = addHours(startLocal, 2);
+
+    // Alarmes: 10:00, 11:00 e 12:00 do dia do ensaio.
+    // Observação: o Google Agenda frequentemente ignora REPEAT/DURATION em import de .ics,
+    // então usamos 3 VALARMs com TRIGGER absoluto (DATE-TIME), que costuma funcionar melhor.
+    const alarm10 = new Date(`${data_ensaio}T10:00:00`);
+    const alarm11 = new Date(`${data_ensaio}T11:00:00`);
+    const alarm12 = new Date(`${data_ensaio}T12:00:00`);
+    const alarm10Utc = formatUtcForIcs(alarm10);
+    const alarm11Utc = formatUtcForIcs(alarm11);
+    const alarm12Utc = formatUtcForIcs(alarm12);
 
     const dtstamp = formatUtcForIcs(new Date());
     const dtstart = formatUtcForIcs(startLocal);
@@ -106,6 +126,21 @@ router.get('/:ensaioId/ics', authenticate, (req, res) => {
       `SUMMARY:${escapeIcsText(summary)}`,
       location ? `LOCATION:${escapeIcsText(location)}` : null,
       `DESCRIPTION:${escapeIcsText(description)}`,
+      'BEGIN:VALARM',
+      `TRIGGER;VALUE=DATE-TIME:${alarm10Utc}`,
+      'ACTION:DISPLAY',
+      `DESCRIPTION:${escapeIcsText('Lembrete 1/3: ensaio hoje (Partiu Ensaio)')}`,
+      'END:VALARM',
+      'BEGIN:VALARM',
+      `TRIGGER;VALUE=DATE-TIME:${alarm11Utc}`,
+      'ACTION:DISPLAY',
+      `DESCRIPTION:${escapeIcsText('Lembrete 2/3: ensaio hoje (Partiu Ensaio)')}`,
+      'END:VALARM',
+      'BEGIN:VALARM',
+      `TRIGGER;VALUE=DATE-TIME:${alarm12Utc}`,
+      'ACTION:DISPLAY',
+      `DESCRIPTION:${escapeIcsText('Lembrete 3/3: ensaio hoje (Partiu Ensaio)')}`,
+      'END:VALARM',
       'END:VEVENT',
       'END:VCALENDAR'
     ].filter(Boolean);
