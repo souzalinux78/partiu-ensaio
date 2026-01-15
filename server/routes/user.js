@@ -302,7 +302,7 @@ router.get('/todos', authenticate, requireAdmin, (req, res) => {
   const db = getDb();
   db.all(
     `SELECT 
-        u.id, u.email, u.name, u.role, u.aprovado, u.tipo, u.instrumento, u.categoria_instrumento, u.celular, u.cidade, u.estado, u.created_at, u.updated_at,
+        u.id, u.email, u.name, u.role, u.aprovado, u.tipo, u.instrumento, u.categoria_instrumento, u.celular, u.cidade, u.estado, u.nome_igreja, u.created_at, u.updated_at,
         GROUP_CONCAT(DISTINCT e.nome_igreja ORDER BY e.nome_igreja SEPARATOR ' | ') AS igrejas
      FROM users u
      LEFT JOIN ensaios e ON e.user_id = u.id AND e.nome_igreja IS NOT NULL AND e.nome_igreja != ''
@@ -331,7 +331,8 @@ router.patch('/:id', authenticate, requireAdmin, (req, res) => {
     categoria_instrumento,
     celular,
     cidade,
-    estado
+    estado,
+    nome_igreja
   } = req.body || {};
 
   const db = getDb();
@@ -363,6 +364,7 @@ router.patch('/:id', authenticate, requireAdmin, (req, res) => {
         celular = ?,
         cidade = ?,
         estado = ?,
+        nome_igreja = ?,
         updated_at = CURRENT_TIMESTAMP
       WHERE id = ?
     `;
@@ -377,6 +379,7 @@ router.patch('/:id', authenticate, requireAdmin, (req, res) => {
       celular !== undefined ? (celular || null) : user.celular,
       cidade !== undefined ? (cidade || null) : user.cidade,
       estado !== undefined ? (estado || null) : user.estado,
+      nome_igreja !== undefined ? (nome_igreja || null) : user.nome_igreja,
       id
     ];
 
@@ -391,7 +394,7 @@ router.patch('/:id', authenticate, requireAdmin, (req, res) => {
       }
 
       db.get(
-        'SELECT id, email, name, role, aprovado, tipo, instrumento, categoria_instrumento, celular, cidade, estado, created_at, updated_at FROM users WHERE id = ?',
+        'SELECT id, email, name, role, aprovado, tipo, instrumento, categoria_instrumento, celular, cidade, estado, nome_igreja, created_at, updated_at FROM users WHERE id = ?',
         [id],
         (err, updated) => {
           if (err) return res.status(500).json({ error: 'Erro ao buscar usuário atualizado' });

@@ -103,6 +103,7 @@ const createTablesManually = async () => {
       celular VARCHAR(20) NULL,
       cidade VARCHAR(100) NULL,
       estado VARCHAR(2) NULL,
+      nome_igreja VARCHAR(255) NULL COMMENT 'Igreja do músico (quando aplicável)',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
       INDEX idx_email (email),
@@ -212,6 +213,28 @@ const checkAndAddMissingColumns = async () => {
       console.log('✅ Coluna "tipo" adicionada com sucesso!');
     } else {
       console.log('✅ Coluna "tipo" já existe na tabela users');
+    }
+
+    // Verificar se a coluna 'nome_igreja' existe na tabela users (para cadastro de músico)
+    const [colIgreja] = await pool.execute(`
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = ?
+      AND TABLE_NAME = 'users'
+      AND COLUMN_NAME = 'nome_igreja'
+    `, [dbConfig.database]);
+
+    if (colIgreja.length === 0) {
+      console.log('📝 Adicionando coluna "nome_igreja" na tabela users...');
+      await pool.execute(`
+        ALTER TABLE users
+        ADD COLUMN nome_igreja VARCHAR(255) NULL
+        COMMENT 'Igreja do músico (quando aplicável)'
+        AFTER estado
+      `);
+      console.log('✅ Coluna "nome_igreja" adicionada com sucesso!');
+    } else {
+      console.log('✅ Coluna "nome_igreja" já existe na tabela users');
     }
 
     // (Google OAuth removido) — não fazemos mais migrações de colunas google_*.

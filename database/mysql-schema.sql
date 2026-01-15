@@ -26,6 +26,7 @@ CREATE TABLE IF NOT EXISTS users (
     celular VARCHAR(20) NULL,
     cidade VARCHAR(100) NULL,
     estado VARCHAR(2) NULL COMMENT 'Sigla do estado (ex: SP, RJ)',
+    nome_igreja VARCHAR(255) NULL COMMENT 'Igreja do músico (quando aplicável)',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     INDEX idx_email (email),

@@ -21,7 +21,8 @@ const EditarUsuario = ({ isOpen, onClose, user, onSaved }) => {
       categoria_instrumento: user.categoria_instrumento || '',
       celular: user.celular || '',
       cidade: user.cidade || '',
-      estado: user.estado || ''
+      estado: user.estado || '',
+      nome_igreja: user.nome_igreja || ''
     };
   }, [user]);
 
@@ -57,7 +58,8 @@ const EditarUsuario = ({ isOpen, onClose, user, onSaved }) => {
         categoria_instrumento: formData.categoria_instrumento || null,
         celular: formData.celular || null,
         cidade: formData.cidade || null,
-        estado: formData.estado || null
+        estado: formData.estado || null,
+        nome_igreja: formData.nome_igreja || null
       };
 
       const res = await api.patch(`/user/${user.id}`, payload);
@@ -138,6 +140,10 @@ const EditarUsuario = ({ isOpen, onClose, user, onSaved }) => {
             <div className="form-group">
               <label htmlFor="celular">Celular</label>
               <input id="celular" name="celular" value={formData.celular} onChange={handleChange} disabled={saving} />
+            </div>
+            <div className="form-group">
+              <label htmlFor="nome_igreja">Nome da Igreja</label>
+              <input id="nome_igreja" name="nome_igreja" value={formData.nome_igreja} onChange={handleChange} disabled={saving} />
             </div>
             <div className="form-group">
               <label htmlFor="cidade">Cidade</label>

@@ -14,6 +14,7 @@ const EnsaiosPublicos = () => {
   const [termoPesquisa, setTermoPesquisa] = useState('');
   const [mesAtual, setMesAtual] = useState(new Date().getMonth());
   const [anoAtual, setAnoAtual] = useState(new Date().getFullYear());
+  const [mostrarTodos, setMostrarTodos] = useState(false);
   const navigate = useNavigate();
   const loadEnsaiosRef = useRef(null);
 
@@ -289,7 +290,8 @@ const EnsaiosPublicos = () => {
   const ensaiosDoMes = filtrarEnsaiosDoMes(ensaiosFiltrados);
   
   // Ordenar ensaios filtrados por data
-  const ensaiosOrdenados = [...ensaiosDoMes].sort((a, b) => {
+  const listaParaExibir = mostrarTodos ? ensaiosFiltrados : ensaiosDoMes;
+  const ensaiosOrdenados = [...listaParaExibir].sort((a, b) => {
     if (!a.proxima_data) return 1;
     if (!b.proxima_data) return -1;
     return new Date(a.proxima_data) - new Date(b.proxima_data);
@@ -355,10 +357,29 @@ const EnsaiosPublicos = () => {
               <h2>Agenda de Ensaios</h2>
               <p className="subtitle">
                 {ensaiosOrdenados.length > 0 
-                  ? `Ensaios de ${nomeMesExibido.charAt(0).toUpperCase() + nomeMesExibido.slice(1)}`
+                  ? (mostrarTodos
+                      ? `Mostrando todos os ensaios (${ensaiosOrdenados.length})`
+                      : `Ensaios de ${nomeMesExibido.charAt(0).toUpperCase() + nomeMesExibido.slice(1)}`
+                    )
                   : 'Nenhum ensaio agendado para este período'
                 }
               </p>
+            </div>
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+              <button
+                className={mostrarTodos ? 'btn-secondary' : 'btn-primary'}
+                onClick={() => setMostrarTodos(true)}
+                type="button"
+              >
+                Mostrar todos
+              </button>
+              <button
+                className={!mostrarTodos ? 'btn-secondary' : 'btn-primary'}
+                onClick={() => setMostrarTodos(false)}
+                type="button"
+              >
+                Por mês
+              </button>
             </div>
           </div>
 

@@ -10,6 +10,7 @@ const RegisterMusico = () => {
     email: '',
     password: '',
     confirmPassword: '',
+    nome_igreja: '',
     instrumento: '',
     categoria_instrumento: '',
     celular: '',
@@ -56,6 +57,7 @@ const RegisterMusico = () => {
         name: formData.name,
         email: formData.email,
         password: formData.password,
+        nome_igreja: formData.nome_igreja,
         instrumento: formData.instrumento,
         categoria_instrumento: formData.categoria_instrumento,
         celular: formData.celular,
@@ -123,6 +125,18 @@ const RegisterMusico = () => {
               autoCapitalize="none"
               autoCorrect="off"
               spellCheck={false}
+              required
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="nome_igreja">Nome da Igreja *</label>
+            <input
+              type="text"
+              id="nome_igreja"
+              name="nome_igreja"
+              value={formData.nome_igreja}
+              onChange={handleChange}
+              placeholder="Ex: Paróquia São José"
               required
             />
           </div>

@@ -7,18 +7,24 @@ const { getDb } = require('../database-mysql');
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'seu_secret_key_aqui_mude_em_producao';
 const WEBHOOK_URL = 'https://webhook.automatizeonline.com.br/webhook/cadastro-ensaio';
+const IS_PROD = process.env.NODE_ENV === 'production';
+
+// Evitar poluir logs em produção com tentativas normais (senha errada / usuário pendente etc.)
+const debugAuth = (...args) => {
+  if (!IS_PROD) console.log(...args);
+};
 
 // Login
 router.post('/login', (req, res) => {
   const { email, password } = req.body;
   const db = getDb();
 
-  console.log('=== TENTATIVA DE LOGIN ===');
-  console.log('Email:', email);
-  console.log('Senha recebida:', password ? '***' : 'VAZIA');
+  debugAuth('=== TENTATIVA DE LOGIN ===');
+  debugAuth('Email:', email);
+  debugAuth('Senha recebida:', password ? '***' : 'VAZIA');
 
   if (!email || !password) {
-    console.error('❌ Email ou senha não fornecidos');
+    debugAuth('❌ Email ou senha não fornecidos');
     return res.status(400).json({ error: 'Email e senha são obrigatórios' });
   }
 
@@ -29,11 +35,11 @@ router.post('/login', (req, res) => {
     }
 
     if (!user) {
-      console.error('❌ Usuário não encontrado:', email);
+      debugAuth('❌ Usuário não encontrado:', email);
       return res.status(401).json({ error: 'Credenciais inválidas' });
     }
 
-    console.log('✅ Usuário encontrado:', {
+    debugAuth('✅ Usuário encontrado:', {
       id: user.id,
       email: user.email,
       role: user.role,
@@ -47,21 +53,21 @@ router.post('/login', (req, res) => {
       }
 
       if (!isMatch) {
-        console.error('❌ Senha incorreta para:', email);
+        debugAuth('❌ Senha incorreta para:', email);
         return res.status(401).json({ error: 'Credenciais inválidas' });
       }
 
-      console.log('✅ Senha correta!');
+      debugAuth('✅ Senha correta!');
 
       // Verificar se músico ou encarregado está aprovado (admin sempre pode fazer login)
       if ((user.role === 'musico' || user.role === 'encarregado') && user.aprovado !== 1) {
-        console.error('❌ Usuário não aprovado:', email, 'Role:', user.role, 'Aprovado:', user.aprovado);
+        debugAuth('❌ Usuário não aprovado:', email, 'Role:', user.role, 'Aprovado:', user.aprovado);
         return res.status(403).json({ 
           error: 'Sua conta ainda não foi aprovada pelo administrador. Aguarde a aprovação.' 
         });
       }
 
-      console.log('✅ Login autorizado, gerando token...');
+      debugAuth('✅ Login autorizado, gerando token...');
 
       const token = jwt.sign(
         { id: user.id, email: user.email, role: user.role },
@@ -69,7 +75,7 @@ router.post('/login', (req, res) => {
         { expiresIn: '7d' }
       );
 
-      console.log('✅ Login realizado com sucesso para:', email, 'Role:', user.role);
+      debugAuth('✅ Login realizado com sucesso para:', email, 'Role:', user.role);
 
       res.json({
         token,
@@ -282,10 +288,10 @@ router.post('/register-musico', async (req, res) => {
   console.log('Body recebido:', JSON.stringify(req.body, null, 2));
   console.log('Headers:', JSON.stringify(req.headers, null, 2));
   
-  const { email, password, name, instrumento, categoria_instrumento, celular, cidade, estado } = req.body;
+  const { email, password, name, instrumento, categoria_instrumento, celular, cidade, estado, nome_igreja } = req.body;
   const db = getDb();
 
-  console.log('Campos extraídos:', { email, name, instrumento, categoria_instrumento, celular, cidade, estado });
+  console.log('Campos extraídos:', { email, name, instrumento, categoria_instrumento, celular, cidade, estado, nome_igreja });
 
   if (!email || !password || !name) {
     console.error('❌ Validação falhou: campos obrigatórios ausentes');
@@ -340,7 +346,7 @@ router.post('/register-musico', async (req, res) => {
         console.log('✅ Hash criado, preparando INSERT...');
         
         // MySQL tem todas as colunas, usar INSERT completo
-        const insertQuery = 'INSERT INTO users (email, password, name, role, aprovado, instrumento, categoria_instrumento, celular, cidade, estado) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
+        const insertQuery = 'INSERT INTO users (email, password, name, role, aprovado, instrumento, categoria_instrumento, celular, cidade, estado, nome_igreja) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)';
         const insertValues = [
           email, 
           hash, 
@@ -351,7 +357,8 @@ router.post('/register-musico', async (req, res) => {
           categoria_instrumento || null,
           celular || null,
           cidade || null,
-          estado || null
+          estado || null,
+          nome_igreja || null
         ];
         
         db.run(insertQuery, insertValues, async function(err) {
@@ -361,7 +368,7 @@ router.post('/register-musico', async (req, res) => {
           }
           
           // Buscar usuário criado
-          db.get('SELECT id, email, name, role, aprovado, instrumento, categoria_instrumento, celular, cidade, estado FROM users WHERE id = ?', [this.lastID], async (err, newUser) => {
+          db.get('SELECT id, email, name, role, aprovado, instrumento, categoria_instrumento, celular, cidade, estado, nome_igreja FROM users WHERE id = ?', [this.lastID], async (err, newUser) => {
             if (err) {
               console.error('❌ Erro ao buscar usuário criado:', err);
               return res.status(500).json({ error: 'Erro ao buscar usuário criado' });
@@ -378,6 +385,7 @@ router.post('/register-musico', async (req, res) => {
               celular: newUser.celular,
               cidade: newUser.cidade,
               estado: newUser.estado,
+              nome_igreja: newUser.nome_igreja || null,
               role: 'musico',
               aprovado: false,
               created_at: new Date().toISOString()

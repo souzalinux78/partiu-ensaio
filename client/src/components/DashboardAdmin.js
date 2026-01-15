@@ -97,6 +97,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
         u.email,
         u.celular,
         u.igrejas,
+        u.nome_igreja,
         u.role,
         u.instrumento,
         u.categoria_instrumento,
