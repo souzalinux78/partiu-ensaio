@@ -556,13 +556,30 @@ router.get('/estatisticas', authenticate, requireAdmin, (req, res) => {
             return res.status(500).json({ error: 'Erro ao buscar estatísticas por estado' });
           }
           
-          // Estatísticas por categoria de instrumento (naipes) - baseado em MÚSICOS
+          // Estatísticas por categoria de instrumento (naipes) - MÚSICOS + ENCARREGADOS (perfil) + ENSAIOS (cadastro)
           db.all(
-            `SELECT categoria_instrumento as naipe, COUNT(*) as total,
-             ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM users WHERE role = 'musico' AND categoria_instrumento IS NOT NULL AND categoria_instrumento != ''), 2) as porcentagem
-             FROM users 
-             WHERE role = 'musico' AND categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
-             GROUP BY categoria_instrumento 
+            `SELECT naipe, COUNT(*) as total,
+             ROUND(COUNT(*) * 100.0 / (
+               SELECT COUNT(*) FROM (
+                 SELECT categoria_instrumento AS naipe
+                 FROM users
+                 WHERE role IN ('musico','encarregado') AND categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
+                 UNION ALL
+                 SELECT categoria_instrumento AS naipe
+                 FROM ensaios
+                 WHERE categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
+               ) x
+             ), 2) as porcentagem
+             FROM (
+               SELECT categoria_instrumento AS naipe
+               FROM users
+               WHERE role IN ('musico','encarregado') AND categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
+               UNION ALL
+               SELECT categoria_instrumento AS naipe
+               FROM ensaios
+               WHERE categoria_instrumento IS NOT NULL AND categoria_instrumento != ''
+             ) t
+             GROUP BY naipe
              ORDER BY total DESC`,
             [],
             (err, porNaipe) => {
@@ -570,12 +587,29 @@ router.get('/estatisticas', authenticate, requireAdmin, (req, res) => {
                 return res.status(500).json({ error: 'Erro ao buscar estatísticas por naipes' });
               }
               
-              // Estatísticas por instrumento específico - baseado em MÚSICOS
+              // Estatísticas por instrumento específico - MÚSICOS + ENCARREGADOS (perfil) + ENSAIOS (cadastro)
               db.all(
                 `SELECT instrumento, categoria_instrumento, COUNT(*) as total,
-                 ROUND(COUNT(*) * 100.0 / (SELECT COUNT(*) FROM users WHERE role = 'musico' AND instrumento IS NOT NULL AND instrumento != ''), 2) as porcentagem
-                 FROM users 
-                 WHERE role = 'musico' AND instrumento IS NOT NULL AND instrumento != ''
+                 ROUND(COUNT(*) * 100.0 / (
+                   SELECT COUNT(*) FROM (
+                     SELECT instrumento, categoria_instrumento
+                     FROM users
+                     WHERE role IN ('musico','encarregado') AND instrumento IS NOT NULL AND instrumento != ''
+                     UNION ALL
+                     SELECT instrumento, categoria_instrumento
+                     FROM ensaios
+                     WHERE instrumento IS NOT NULL AND instrumento != ''
+                   ) x
+                 ), 2) as porcentagem
+                 FROM (
+                   SELECT instrumento, categoria_instrumento
+                   FROM users
+                   WHERE role IN ('musico','encarregado') AND instrumento IS NOT NULL AND instrumento != ''
+                   UNION ALL
+                   SELECT instrumento, categoria_instrumento
+                   FROM ensaios
+                   WHERE instrumento IS NOT NULL AND instrumento != ''
+                 ) t
                  GROUP BY instrumento, categoria_instrumento
                  ORDER BY total DESC`,
                 [],
