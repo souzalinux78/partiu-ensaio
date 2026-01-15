@@ -63,23 +63,41 @@ router.get('/callback', async (req, res) => {
     const oauth2Client = getOAuthClient(req);
     const { tokens } = await oauth2Client.getToken(code);
 
-    if (!tokens?.refresh_token) {
-      // Se não vier refresh_token é porque o Google já concedeu antes e não reenviou.
-      // Para simplicidade, instruímos revogar e reconectar.
-      return res
-        .status(400)
-        .send('Não recebemos refresh_token. Remova o acesso do app na sua Conta Google e tente novamente.');
+    const db = getDb();
+
+    // Caso comum: Google não reenvia refresh_token se o usuário já autorizou antes.
+    // Se já existe refresh_token salvo, seguimos sem erro.
+    const existingRefresh = await new Promise((resolve) => {
+      db.get('SELECT google_refresh_token FROM users WHERE id = ?', [userId], (err, row) => {
+        if (err) return resolve(null);
+        resolve(row?.google_refresh_token || null);
+      });
+    });
+
+    const refreshTokenToSave = tokens?.refresh_token || existingRefresh;
+
+    if (!refreshTokenToSave) {
+      const front = process.env.FRONTEND_URL || getBaseUrl(req);
+      const html = `
+        <html><head><meta charset="utf-8"><title>Erro no callback do Google</title></head>
+        <body style="font-family: Arial, sans-serif; padding: 16px;">
+          <h3>Erro no callback do Google</h3>
+          <p><strong>Motivo:</strong> não recebemos <code>refresh_token</code>.</p>
+          <p>Isso normalmente acontece quando a conta Google já autorizou o app anteriormente e o Google não reenvia o refresh token.</p>
+          <p><strong>Como resolver:</strong> vá em <em>Conta Google → Segurança → Acesso de terceiros</em>, remova o acesso do app e tente conectar novamente.</p>
+          <p><a href="${front}/dashboard">Voltar ao app</a></p>
+        </body></html>`;
+      return res.status(400).send(html);
     }
 
-    oauth2Client.setCredentials(tokens);
+    oauth2Client.setCredentials({ ...tokens, refresh_token: refreshTokenToSave });
     const oauth2 = google.oauth2({ version: 'v2', auth: oauth2Client });
     const me = await oauth2.userinfo.get();
     const googleEmail = me?.data?.email || null;
 
-    const db = getDb();
     db.run(
       'UPDATE users SET google_refresh_token = ?, google_email = ? WHERE id = ?',
-      [tokens.refresh_token, googleEmail, userId],
+      [refreshTokenToSave, googleEmail, userId],
       function (err) {
         if (err) {
           console.error('Erro ao salvar tokens Google:', err);
@@ -90,10 +108,31 @@ router.get('/callback', async (req, res) => {
       }
     );
   } catch (e) {
-    console.error('Erro callback Google:', e);
-    res.status(500).send('Erro no callback do Google');
+    console.error('Erro callback Google:', e?.response?.data || e);
+    const front = process.env.FRONTEND_URL || getBaseUrl(req);
+    const redirectUri = `${getBaseUrl(req)}/api/google/callback`;
+    const details = escapeHtml(JSON.stringify(e?.response?.data || { message: e?.message || String(e) }, null, 2));
+    const html = `
+      <html><head><meta charset="utf-8"><title>Erro no callback do Google</title></head>
+      <body style="font-family: Arial, sans-serif; padding: 16px;">
+        <h3>Erro no callback do Google</h3>
+        <p>Veja os detalhes abaixo (isso ajuda a corrigir rapidamente).</p>
+        <p><strong>redirect_uri esperado pelo servidor:</strong> <code>${escapeHtml(redirectUri)}</code></p>
+        <pre style="background:#f5f5f5; padding:12px; border-radius:8px; overflow:auto;">${details}</pre>
+        <p><a href="${front}/dashboard">Voltar ao app</a></p>
+      </body></html>`;
+    res.status(500).send(html);
   }
 });
+
+function escapeHtml(str) {
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
 
 router.post('/disconnect', authenticate, (req, res) => {
   const db = getDb();
