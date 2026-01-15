@@ -5,6 +5,13 @@ import AlterarSenha from './AlterarSenha';
 import EditarUsuario from './EditarUsuario';
 import './Dashboard.css';
 
+const formatIgrejas = (u) => {
+  const raw = u?.igrejas ?? u?.nome_igreja;
+  if (!raw) return '—';
+  if (Array.isArray(raw)) return raw.filter(Boolean).join(', ') || '—';
+  return String(raw).trim() || '—';
+};
+
 const DashboardAdmin = ({ user, onLogout }) => {
   const [activeTab, setActiveTab] = useState('estatisticas');
   const [ensaiosPendentes, setEnsaiosPendentes] = useState([]);
@@ -627,7 +634,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
 
                           <div style={{ marginTop: 8, display: 'grid', gap: 6, color: '#111' }}>
                             <div><strong>Celular:</strong> {u.celular || '—'}</div>
-                            <div><strong>Igreja(s):</strong> {u.igrejas || '—'}</div>
+                            <div><strong>Igreja(s):</strong> {formatIgrejas(u)}</div>
                             <div>
                               <strong>Perfil:</strong> {u.role}{u.role === 'encarregado' && u.tipo ? ` (${u.tipo})` : ''}
                             </div>
@@ -692,7 +699,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
                                 {u.celular || '—'}
                               </td>
                               <td style={{ padding: '10px 10px', color: '#111' }}>
-                                {u.igrejas || '—'}
+                                {formatIgrejas(u)}
                               </td>
                               <td style={{ padding: '10px 10px', color: '#111' }}>
                                 {u.role}

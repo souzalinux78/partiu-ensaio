@@ -514,7 +514,7 @@ const DashboardEncarregado = ({ user, onLogout }) => {
                     name="nome_igreja"
                     value={formData.nome_igreja}
                     onChange={handleChange}
-                    placeholder="Ex: Igreja São João"
+                    placeholder="Ex: CCB Bairro"
                     required
                   />
                 </div>
