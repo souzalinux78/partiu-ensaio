@@ -13,12 +13,33 @@ const DashboardMusico = ({ user, onLogout }) => {
   const [processandoInteresse, setProcessandoInteresse] = useState({});
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [google, setGoogle] = useState({ loading: true, connected: false, email: null });
 
   useEffect(() => {
     loadEnsaios();
     // Registrar push (somente se o usuário permitir notificações)
     ensurePushSubscription().catch(() => {});
+    refreshGoogleStatus();
+
+    // Se voltou do OAuth (callback redireciona para /dashboard?google=connected),
+    // atualizar status e limpar a query string para não ficar "travado" em cache.
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('google') === 'connected') {
+        refreshGoogleStatus();
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    } catch {}
   }, []);
+
+  const refreshGoogleStatus = async () => {
+    try {
+      const r = await api.get('/google/status');
+      setGoogle({ loading: false, connected: !!r.data.connected, email: r.data.google_email || null });
+    } catch {
+      setGoogle({ loading: false, connected: false, email: null });
+    }
+  };
 
   const buildGoogleCalendarUrl = (ensaio) => {
     const data = ensaio.proxima_data;
@@ -84,6 +105,24 @@ const DashboardMusico = ({ user, onLogout }) => {
     if (!w) window.location.href = url;
   };
 
+  const connectGoogle = async () => {
+    try {
+      const r = await api.get('/google/auth');
+      if (r.data?.url) window.location.href = r.data.url;
+    } catch (e) {
+      alert(e.response?.data?.error || 'Erro ao conectar Google Agenda');
+    }
+  };
+
+  const disconnectGoogle = async () => {
+    try {
+      await api.post('/google/disconnect');
+      setGoogle({ loading: false, connected: false, email: null });
+    } catch (e) {
+      alert(e.response?.data?.error || 'Erro ao desconectar Google Agenda');
+    }
+  };
+
   const loadInteresses = React.useCallback(async () => {
     const interessesMap = {};
     for (const ensaio of ensaios) {
@@ -143,26 +182,16 @@ const DashboardMusico = ({ user, onLogout }) => {
         await api.post(`/interesse/${ensaioId}`, { data_ensaio: dataEnsaio });
         setInteresses({ ...interesses, [chave]: true });
 
-        // Abrir Google Agenda já preenchido (forma mais simples para usuário leigo)
-        openGoogleCalendar(ensaio);
-
-        // Baixar .ICS para o usuário adicionar no Google Agenda/Calendário
-        try {
-          const res = await api.get(
-            `/interesse/${ensaioId}/ics?data_ensaio=${encodeURIComponent(dataEnsaio)}`,
-            { responseType: 'blob' }
-          );
-          const blob = new Blob([res.data], { type: 'text/calendar;charset=utf-8' });
-          const blobUrl = window.URL.createObjectURL(blob);
-          const a = document.createElement('a');
-          a.href = blobUrl;
-          a.download = `ensaio-${ensaioId}-${dataEnsaio}.ics`;
-          document.body.appendChild(a);
-          a.click();
-          a.remove();
-          window.URL.revokeObjectURL(blobUrl);
-        } catch (e) {
-          console.warn('Não foi possível iniciar download do .ics automaticamente:', e);
+        // Se Google Agenda estiver conectado, cria o evento sem sair do PWA.
+        // Caso contrário, mantém o botão manual para abrir o link.
+        if (google.connected) {
+          try {
+            await api.post('/google/create-event', { ensaioId, data_ensaio: dataEnsaio });
+            // feedback simples sem interromper o fluxo
+            console.log('✅ Evento adicionado ao Google Agenda (sem sair do PWA)');
+          } catch (e) {
+            console.warn('Falha ao criar evento no Google Agenda:', e);
+          }
         }
       }
     } catch (err) {
@@ -201,6 +230,17 @@ const DashboardMusico = ({ user, onLogout }) => {
           <div className="header-actions">
             <span className="user-name">Olá, {user.name}</span>
             <Link to="/" className="btn-link">Ver Público</Link>
+            {google.loading ? (
+              <button className="btn-link" disabled>Google Agenda...</button>
+            ) : google.connected ? (
+              <button className="btn-link" onClick={disconnectGoogle} title={google.email || 'Conectado'}>
+                Desconectar Google
+              </button>
+            ) : (
+              <button className="btn-link" onClick={connectGoogle}>
+                Conectar Google Agenda
+              </button>
+            )}
             <button onClick={() => setShowReport(true)} className="btn-link">Reportar problema</button>
             <button onClick={() => setShowAlterarSenha(true)} className="btn-link">Alterar Senha</button>
             <button onClick={onLogout} className="btn-secondary">Sair</button>
@@ -336,7 +376,9 @@ const DashboardMusico = ({ user, onLogout }) => {
                               : 'Tenho Interesse'}
                           </button>
                         )}
-                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && (
+                        {/* Só mostrar o botão de abrir o Google Agenda quando NÃO estiver conectado.
+                            Se estiver conectado, o evento é criado automaticamente sem sair do PWA. */}
+                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && !google.connected && (
                           <button
                             onClick={() => openGoogleCalendar(ensaio)}
                             className="btn-link"

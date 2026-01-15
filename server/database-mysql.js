@@ -98,6 +98,8 @@ const createTablesManually = async () => {
       role ENUM('admin', 'encarregado', 'musico') NOT NULL DEFAULT 'encarregado',
       aprovado TINYINT(1) DEFAULT 1,
       tipo ENUM('local', 'regional') NULL COMMENT 'Tipo de encarregado (local ou regional)',
+      google_refresh_token TEXT NULL COMMENT 'OAuth refresh token Google (Calendar)',
+      google_email VARCHAR(255) NULL COMMENT 'Email da conta Google conectada',
       instrumento VARCHAR(100) NULL,
       categoria_instrumento VARCHAR(50) NULL,
       celular VARCHAR(20) NULL,
@@ -150,6 +152,7 @@ const createTablesManually = async () => {
       musico_id INT NOT NULL,
       data_ensaio DATE NOT NULL,
       webhook_enviado TINYINT(1) DEFAULT 0,
+      google_event_id VARCHAR(255) NULL COMMENT 'ID do evento criado no Google Calendar',
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (ensaio_id) REFERENCES ensaios(id) ON DELETE CASCADE,
       FOREIGN KEY (musico_id) REFERENCES users(id) ON DELETE CASCADE,
@@ -212,6 +215,66 @@ const checkAndAddMissingColumns = async () => {
       console.log('✅ Coluna "tipo" adicionada com sucesso!');
     } else {
       console.log('✅ Coluna "tipo" já existe na tabela users');
+    }
+
+    // google_refresh_token
+    const [googleRefreshCols] = await pool.execute(`
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = ?
+      AND TABLE_NAME = 'users'
+      AND COLUMN_NAME = 'google_refresh_token'
+    `, [dbConfig.database]);
+
+    if (googleRefreshCols.length === 0) {
+      console.log('📝 Adicionando coluna "google_refresh_token" na tabela users...');
+      await pool.execute(`
+        ALTER TABLE users
+        ADD COLUMN google_refresh_token TEXT NULL
+        COMMENT 'OAuth refresh token Google (Calendar)'
+        AFTER tipo
+      `);
+      console.log('✅ Coluna "google_refresh_token" adicionada com sucesso!');
+    }
+
+    // google_email
+    const [googleEmailCols] = await pool.execute(`
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = ?
+      AND TABLE_NAME = 'users'
+      AND COLUMN_NAME = 'google_email'
+    `, [dbConfig.database]);
+
+    if (googleEmailCols.length === 0) {
+      console.log('📝 Adicionando coluna "google_email" na tabela users...');
+      await pool.execute(`
+        ALTER TABLE users
+        ADD COLUMN google_email VARCHAR(255) NULL
+        COMMENT 'Email da conta Google conectada'
+        AFTER google_refresh_token
+      `);
+      console.log('✅ Coluna "google_email" adicionada com sucesso!');
+    }
+
+    // google_event_id em interesses_ensaios
+    const [googleEventCols] = await pool.execute(`
+      SELECT COLUMN_NAME
+      FROM INFORMATION_SCHEMA.COLUMNS
+      WHERE TABLE_SCHEMA = ?
+      AND TABLE_NAME = 'interesses_ensaios'
+      AND COLUMN_NAME = 'google_event_id'
+    `, [dbConfig.database]);
+
+    if (googleEventCols.length === 0) {
+      console.log('📝 Adicionando coluna "google_event_id" na tabela interesses_ensaios...');
+      await pool.execute(`
+        ALTER TABLE interesses_ensaios
+        ADD COLUMN google_event_id VARCHAR(255) NULL
+        COMMENT 'ID do evento criado no Google Calendar'
+        AFTER webhook_enviado
+      `);
+      console.log('✅ Coluna "google_event_id" adicionada com sucesso!');
     }
   } catch (err) {
     // Se a coluna já existe, ignorar erro

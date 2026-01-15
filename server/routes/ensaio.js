@@ -584,55 +584,69 @@ router.get('/estatisticas', authenticate, requireAdmin, (req, res) => {
                     return res.status(500).json({ error: 'Erro ao buscar estatísticas por instrumentos' });
                   }
                   
-                  // Estatísticas de usuários
-                  // Total de músicos
-                  db.get(
-                    `SELECT COUNT(*) as total FROM users WHERE role = 'musico' AND aprovado = 1`,
-                    [],
-                    (err, musicosResult) => {
-                      const totalMusicos = err ? 0 : (musicosResult?.total || 0);
-                      
-                      // Total de encarregados
-                      db.get(
-                        `SELECT COUNT(*) as total FROM users WHERE role = 'encarregado' AND aprovado = 1`,
-                        [],
-                        (err, encarregadosResult) => {
-                          const totalEncarregados = err ? 0 : (encarregadosResult?.total || 0);
-                          
-                          // Encarregados locais
-                          db.get(
-                            `SELECT COUNT(*) as total FROM users WHERE role = 'encarregado' AND aprovado = 1 AND tipo = 'local'`,
-                            [],
-                            (err, encarregadosLocaisResult) => {
-                              const encarregadosLocais = err ? 0 : (encarregadosLocaisResult?.total || 0);
-                              
-                              // Encarregados regionais
-                              db.get(
-                                `SELECT COUNT(*) as total FROM users WHERE role = 'encarregado' AND aprovado = 1 AND tipo = 'regional'`,
-                                [],
-                                (err, encarregadosRegionaisResult) => {
-                                  const encarregadosRegionais = err ? 0 : (encarregadosRegionaisResult?.total || 0);
-                                  
-                                  res.json({
-                                    porCidade: porCidade || [],
-                                    porEstado: porEstado || [],
-                                    porNaipe: porNaipe || [],
-                                    porInstrumento: porInstrumento || [],
-                                    usuarios: {
-                                      totalMusicos: totalMusicos,
-                                      totalEncarregados: totalEncarregados,
-                                      encarregadosLocais: encarregadosLocais,
-                                      encarregadosRegionais: encarregadosRegionais
-                                    }
+                  // Estatísticas de usuários e ensaios (totais e por status)
+                  db.get(`SELECT COUNT(*) as total FROM users WHERE role = 'musico'`, [], (err, musicosTotalRow) => {
+                    const totalMusicos = err ? 0 : (musicosTotalRow?.total || 0);
+
+                    db.get(`SELECT COUNT(*) as total FROM users WHERE role = 'musico' AND aprovado = 1`, [], (err, musicosAprovRow) => {
+                      const musicosAprovados = err ? 0 : (musicosAprovRow?.total || 0);
+                      const musicosPendentes = Math.max(0, totalMusicos - musicosAprovados);
+
+                      db.get(`SELECT COUNT(*) as total FROM users WHERE role = 'encarregado'`, [], (err, encTotalRow) => {
+                        const totalEncarregados = err ? 0 : (encTotalRow?.total || 0);
+
+                        db.get(`SELECT COUNT(*) as total FROM users WHERE role = 'encarregado' AND aprovado = 1`, [], (err, encAprovRow) => {
+                          const encarregadosAprovados = err ? 0 : (encAprovRow?.total || 0);
+                          const encarregadosPendentes = Math.max(0, totalEncarregados - encarregadosAprovados);
+
+                          db.get(`SELECT COUNT(*) as total FROM users WHERE role = 'encarregado' AND tipo = 'local'`, [], (err, encLocRow) => {
+                            const encarregadosLocais = err ? 0 : (encLocRow?.total || 0);
+
+                            db.get(`SELECT COUNT(*) as total FROM users WHERE role = 'encarregado' AND tipo = 'regional'`, [], (err, encRegRow) => {
+                              const encarregadosRegionais = err ? 0 : (encRegRow?.total || 0);
+
+                              // Ensaios
+                              db.get(`SELECT COUNT(*) as total FROM ensaios`, [], (err, ensTotalRow) => {
+                                const totalEnsaios = err ? 0 : (ensTotalRow?.total || 0);
+
+                                db.get(`SELECT COUNT(*) as total FROM ensaios WHERE status = 'aprovado'`, [], (err, ensAprovRow) => {
+                                  const ensaiosAprovados = err ? 0 : (ensAprovRow?.total || 0);
+
+                                  db.get(`SELECT COUNT(*) as total FROM ensaios WHERE status = 'pendente'`, [], (err, ensPendRow) => {
+                                    const ensaiosPendentes = err ? 0 : (ensPendRow?.total || 0);
+
+                                    res.json({
+                                      porCidade: porCidade || [],
+                                      porEstado: porEstado || [],
+                                      porNaipe: porNaipe || [],
+                                      porInstrumento: porInstrumento || [],
+                                      usuarios: {
+                                        // Mantém compatibilidade: agora total inclui pendentes também (corrige “recentes”)
+                                        totalMusicos,
+                                        totalEncarregados,
+                                        encarregadosLocais,
+                                        encarregadosRegionais,
+                                        // Novos detalhamentos
+                                        musicosAprovados,
+                                        musicosPendentes,
+                                        encarregadosAprovados,
+                                        encarregadosPendentes
+                                      },
+                                      ensaios: {
+                                        total: totalEnsaios,
+                                        aprovados: ensaiosAprovados,
+                                        pendentes: ensaiosPendentes
+                                      }
+                                    });
                                   });
-                                }
-                              );
-                            }
-                          );
-                        }
-                      );
-                    }
-                  );
+                                });
+                              });
+                            });
+                          });
+                        });
+                      });
+                    });
+                  });
                 }
               );
             }

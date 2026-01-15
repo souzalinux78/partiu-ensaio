@@ -513,6 +513,9 @@ const DashboardAdmin = ({ user, onLogout }) => {
               <div className="stats-container" style={{ gridTemplateColumns: '1fr' }}>
                 <div className="stats-section">
                   <h3>Usuários Cadastrados</h3>
+                  <p style={{ marginTop: '-10px', color: '#666' }}>
+                    Totais incluem pendentes (cadastros recentes).
+                  </p>
                   <div className="stats-list">
                     <div className="stat-item">
                       <div className="stat-label">Músicos</div>
@@ -527,6 +530,11 @@ const DashboardAdmin = ({ user, onLogout }) => {
                       </div>
                       <div className="stat-value">
                         {estatisticas.usuarios?.totalMusicos || 0} músicos cadastrados
+                        {typeof estatisticas.usuarios?.musicosAprovados === 'number' && (
+                          <span style={{ display: 'block', fontSize: '0.9rem', color: '#555' }}>
+                            Aprovados: {estatisticas.usuarios.musicosAprovados} • Pendentes: {estatisticas.usuarios.musicosPendentes}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="stat-item">
@@ -542,6 +550,11 @@ const DashboardAdmin = ({ user, onLogout }) => {
                       </div>
                       <div className="stat-value">
                         {estatisticas.usuarios?.totalEncarregados || 0} encarregados cadastrados
+                        {typeof estatisticas.usuarios?.encarregadosAprovados === 'number' && (
+                          <span style={{ display: 'block', fontSize: '0.9rem', color: '#555' }}>
+                            Aprovados: {estatisticas.usuarios.encarregadosAprovados} • Pendentes: {estatisticas.usuarios.encarregadosPendentes}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div className="stat-item">
@@ -587,6 +600,36 @@ const DashboardAdmin = ({ user, onLogout }) => {
                           </span>
                         )}
                       </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Seção de Ensaios */}
+              <div className="stats-container" style={{ gridTemplateColumns: '1fr', marginTop: '20px' }}>
+                <div className="stats-section">
+                  <h3>Ensaios</h3>
+                  <div className="stats-list">
+                    <div className="stat-item">
+                      <div className="stat-label">Total</div>
+                      <div className="stat-bar">
+                        <div className="stat-bar-fill" style={{ width: '100%' }}></div>
+                      </div>
+                      <div className="stat-value">{estatisticas.ensaios?.total || 0} ensaios cadastrados</div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-label">Aprovados</div>
+                      <div className="stat-bar">
+                        <div className="stat-bar-fill" style={{ width: '100%', background: '#D4AF37' }}></div>
+                      </div>
+                      <div className="stat-value">{estatisticas.ensaios?.aprovados || 0} ensaios aprovados</div>
+                    </div>
+                    <div className="stat-item">
+                      <div className="stat-label">Pendentes</div>
+                      <div className="stat-bar">
+                        <div className="stat-bar-fill" style={{ width: '100%', background: '#1a1a1a' }}></div>
+                      </div>
+                      <div className="stat-value">{estatisticas.ensaios?.pendentes || 0} ensaios pendentes</div>
                     </div>
                   </div>
                 </div>

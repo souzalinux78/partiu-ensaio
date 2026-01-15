@@ -13,6 +13,7 @@ const userRoutes = require('./routes/user');
 const interesseRoutes = require('./routes/interesse');
 const pushRoutes = require('./routes/push');
 const reportRoutes = require('./routes/report');
+const googleRoutes = require('./routes/google');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -78,6 +79,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/interesse', interesseRoutes);
 app.use('/api/push', pushRoutes);
 app.use('/api/report', reportRoutes);
+app.use('/api/google', googleRoutes);
 
 // Inicializar banco de dados
 (async () => {
