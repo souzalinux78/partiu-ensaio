@@ -1,6 +1,7 @@
 // Lista de instrumentos com suas categorias
 export const instrumentos = [
   { nome: 'ACORDEON', categoria: 'TECLAS' },
+  { nome: 'ÓRGÃO', categoria: 'TECLAS' },
   { nome: 'BARÍTONO DE PISTO', categoria: 'METAIS' },
   { nome: 'CLARINETE', categoria: 'MADEIRAS' },
   { nome: 'CLARINETE ALTO', categoria: 'MADEIRAS' },
