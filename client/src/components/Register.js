@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { instrumentos, getCategoriaInstrumento } from '../utils/instrumentos';
+import PoliticaPrivacidade from './PoliticaPrivacidade';
 import './Login.css';
 
 const Register = ({ onLogin }) => {
@@ -20,6 +21,8 @@ const Register = ({ onLogin }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const [aceitaPolitica, setAceitaPolitica] = useState(false);
+  const [showPolitica, setShowPolitica] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -48,6 +51,11 @@ const Register = ({ onLogin }) => {
 
     if (formData.password.length < 6) {
       setError('A senha deve ter pelo menos 6 caracteres');
+      return;
+    }
+
+    if (!aceitaPolitica) {
+      setError('Você precisa aceitar a Política de Privacidade e LGPD para continuar');
       return;
     }
 
@@ -255,6 +263,28 @@ const Register = ({ onLogin }) => {
           <div className="aviso-cadastro">
             ⚠️ <strong>Atenção:</strong> Seu cadastro será enviado para aprovação. Você receberá acesso após a aprovação do administrador.
           </div>
+          <div className="politica-checkbox-group">
+            <input
+              type="checkbox"
+              id="aceitaPolitica"
+              checked={aceitaPolitica}
+              onChange={(e) => setAceitaPolitica(e.target.checked)}
+              required
+            />
+            <label htmlFor="aceitaPolitica">
+              Li e aceito a{' '}
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowPolitica(true);
+                }}
+              >
+                Política de Privacidade e Proteção de Dados Pessoais (LGPD)
+              </a>
+              {' '}*
+            </label>
+          </div>
           <button type="submit" disabled={loading} className="btn-primary">
             {loading ? 'Cadastrando...' : 'Cadastrar como Encarregado'}
           </button>
@@ -269,6 +299,10 @@ const Register = ({ onLogin }) => {
           <Link to="/">Ver ensaios públicos</Link>
         </p>
       </div>
+      <PoliticaPrivacidade 
+        isOpen={showPolitica} 
+        onClose={() => setShowPolitica(false)} 
+      />
     </div>
   );
 };

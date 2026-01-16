@@ -1,0 +1,194 @@
+.politica-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  padding: 20px;
+  overflow-y: auto;
+}
+
+.politica-modal-content {
+  background: #fff;
+  border-radius: 12px;
+  max-width: 900px;
+  width: 100%;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.politica-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px 24px;
+  border-bottom: 2px solid rgba(212, 175, 55, 0.2);
+  background: linear-gradient(135deg, #D4AF37 0%, #b8942e 100%);
+  color: #111;
+  border-radius: 12px 12px 0 0;
+}
+
+.politica-modal-header h2 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #111;
+}
+
+.politica-modal-close {
+  background: transparent;
+  border: none;
+  font-size: 32px;
+  color: #111;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: background 0.2s;
+}
+
+.politica-modal-close:hover {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.politica-modal-body {
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
+  color: #333;
+  line-height: 1.7;
+}
+
+.politica-modal-body h3 {
+  color: #111;
+  margin-top: 24px;
+  margin-bottom: 12px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border-bottom: 2px solid #D4AF37;
+  padding-bottom: 6px;
+}
+
+.politica-modal-body p {
+  margin-bottom: 16px;
+  text-align: justify;
+}
+
+.politica-modal-body ul {
+  margin-bottom: 16px;
+  padding-left: 24px;
+}
+
+.politica-modal-body li {
+  margin-bottom: 8px;
+}
+
+.politica-header-info {
+  background: rgba(212, 175, 55, 0.1);
+  padding: 16px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  border-left: 4px solid #D4AF37;
+}
+
+.politica-header-info p {
+  margin: 4px 0;
+}
+
+.politica-footer {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 2px solid rgba(212, 175, 55, 0.2);
+  text-align: center;
+}
+
+.politica-footer p {
+  margin: 8px 0;
+}
+
+.politica-modal-footer {
+  padding: 16px 24px;
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  display: flex;
+  justify-content: flex-end;
+}
+
+.politica-checkbox-group {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin: 20px 0;
+  padding: 16px;
+  background: rgba(212, 175, 55, 0.05);
+  border-radius: 8px;
+  border: 2px solid rgba(212, 175, 55, 0.2);
+}
+
+.politica-checkbox-group input[type="checkbox"] {
+  margin-top: 3px;
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.politica-checkbox-group label {
+  cursor: pointer;
+  flex: 1;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: #111;
+}
+
+.politica-checkbox-group label a {
+  color: #D4AF37;
+  text-decoration: underline;
+  font-weight: 600;
+}
+
+.politica-checkbox-group label a:hover {
+  color: #b8942e;
+}
+
+.politica-checkbox-group.error {
+  border-color: #d32f2f;
+  background: rgba(211, 47, 47, 0.05);
+}
+
+@media (max-width: 768px) {
+  .politica-modal-overlay {
+    padding: 10px;
+  }
+
+  .politica-modal-content {
+    max-height: 95vh;
+  }
+
+  .politica-modal-header {
+    padding: 16px;
+  }
+
+  .politica-modal-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .politica-modal-body {
+    padding: 16px;
+  }
+
+  .politica-modal-body h3 {
+    font-size: 1.1rem;
+  }
+}
