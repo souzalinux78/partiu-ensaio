@@ -20,25 +20,56 @@ const DashboardMusico = ({ user, onLogout }) => {
     ensurePushSubscription().catch(() => {});
   }, []);
 
-  const downloadIcs = async (ensaio) => {
+  const adicionarAgenda = (ensaio) => {
     try {
-      const ensaioId = ensaio.id_original || ensaio.id;
       const dataEnsaio = ensaio.proxima_data;
-      if (!ensaioId || !dataEnsaio) return;
-      const res = await api.get(`/interesse/${ensaioId}/ics?data_ensaio=${encodeURIComponent(dataEnsaio)}`, {
-        responseType: 'blob'
-      });
-      const blob = new Blob([res.data], { type: 'text/calendar;charset=utf-8' });
-      const blobUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = blobUrl;
-      a.download = `ensaio-${ensaioId}-${dataEnsaio}.ics`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(blobUrl);
+      if (!dataEnsaio) return;
+
+      // Parse da data e horário
+      const [ano, mes, dia] = dataEnsaio.split('-');
+      let horaInicio = '19:00'; // horário padrão
+      let horaFim = '21:00'; // horário padrão (2 horas de duração)
+      
+      if (ensaio.horario) {
+        // Assumindo formato HH:MM
+        const partesHorario = ensaio.horario.split(':');
+        const h = partesHorario[0] || '19';
+        const m = partesHorario[1] || '00';
+        horaInicio = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        // Adicionar 2 horas para o fim
+        const horaFimObj = new Date(`2000-01-01T${horaInicio}:00`);
+        horaFimObj.setHours(horaFimObj.getHours() + 2);
+        horaFim = `${String(horaFimObj.getHours()).padStart(2, '0')}:${String(horaFimObj.getMinutes()).padStart(2, '0')}`;
+      }
+
+      // Preparar dados do evento
+      const nomeIgreja = ensaio.nome_igreja || ensaio.local || 'Ensaio Musical';
+      const descricaoTexto = `Ensaio musical${ensaio.nome_encarregado ? `\nEncarregado: ${ensaio.nome_encarregado}` : ''}${ensaio.endereco ? `\nLocal: ${ensaio.endereco}` : ''}`;
+      const localTexto = ensaio.endereco ? 
+        `${ensaio.endereco}${ensaio.cidade ? `, ${ensaio.cidade}` : ''}${ensaio.estado ? ` - ${ensaio.estado}` : ''}` :
+        'Local a confirmar';
+
+      // Formato para Google Calendar (YYYYMMDDTHHmmss)
+      const formatarDataHora = (data, hora) => {
+        const [h, m] = hora.split(':');
+        return `${data.replace(/-/g, '')}T${h.padStart(2, '0')}${m.padStart(2, '0')}00`;
+      };
+
+      const dataInicio = formatarDataHora(dataEnsaio, horaInicio);
+      const dataFim = formatarDataHora(dataEnsaio, horaFim);
+
+      // Criar link do Google Calendar (abre diretamente, sem download)
+      const titulo = encodeURIComponent(`Ensaio - ${nomeIgreja}`);
+      const descricao = encodeURIComponent(descricaoTexto);
+      const local = encodeURIComponent(localTexto);
+
+      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${dataInicio}/${dataFim}&details=${descricao}&location=${local}`;
+
+      // Abrir Google Calendar em nova aba (transparente, sem download)
+      window.open(googleCalendarUrl, '_blank');
     } catch (e) {
-      alert('Não foi possível baixar o .ics. Tente novamente.');
+      console.error('Erro ao adicionar à agenda:', e);
+      alert('Não foi possível adicionar à agenda. Tente novamente.');
     }
   };
 
@@ -100,9 +131,6 @@ const DashboardMusico = ({ user, onLogout }) => {
         // Adicionar interesse
         await api.post(`/interesse/${ensaioId}`, { data_ensaio: dataEnsaio });
         setInteresses({ ...interesses, [chave]: true });
-
-        // Agenda (sem OAuth): baixar .ics para o usuário adicionar no calendário
-        await downloadIcs(ensaio);
       }
     } catch (err) {
       console.error('Erro ao processar interesse:', err);
@@ -275,14 +303,14 @@ const DashboardMusico = ({ user, onLogout }) => {
                               : 'Tenho Interesse'}
                           </button>
                         )}
-                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && (
+                        {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && ensaio.proxima_data && (
                           <button
-                            onClick={() => downloadIcs(ensaio)}
+                            onClick={() => adicionarAgenda(ensaio)}
                             className="btn-link"
                             style={{ marginLeft: '10px' }}
-                            title="Baixar .ics e adicionar no Calendário"
+                            title="Adicionar evento ao calendário"
                           >
-                            Baixar .ics
+                            📅 Adicionar à Agenda
                           </button>
                         )}
                       </div>
