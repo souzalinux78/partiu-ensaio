@@ -8,8 +8,10 @@ import DashboardAdmin from './components/DashboardAdmin';
 import DashboardMusico from './components/DashboardMusico';
 import EnsaiosPublicos from './components/EnsaiosPublicos';
 import InstallPrompt from './components/InstallPrompt';
+import Footer from './components/Footer';
 import { getAuthToken, getUser } from './utils/auth';
 import { initNotifications } from './utils/notifications';
+import './App.css';
 
 function App() {
   const [user, setUser] = useState(null);
@@ -47,38 +49,41 @@ function App() {
 
   return (
     <Router>
-      <InstallPrompt />
-      <Routes>
-        <Route path="/" element={<EnsaiosPublicos />} />
-        <Route 
-          path="/login" 
-          element={user ? <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} /> : <Login onLogin={handleLogin} />} 
-        />
-        <Route 
-          path="/register" 
-          element={user ? <Navigate to="/dashboard" /> : <Register onLogin={handleLogin} />} 
-        />
-        <Route 
-          path="/register-musico" 
-          element={user ? <Navigate to="/dashboard" /> : <RegisterMusico />} 
-        />
-        <Route 
-          path="/dashboard" 
-          element={
-            user && user.role === 'encarregado' ? (
-              <DashboardEncarregado user={user} onLogout={handleLogout} />
-            ) : user && user.role === 'musico' ? (
-              <DashboardMusico user={user} onLogout={handleLogout} />
-            ) : (
-              <Navigate to="/login" />
-            )
-          } 
-        />
-        <Route 
-          path="/admin" 
-          element={user && user.role === 'admin' ? <DashboardAdmin user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} 
-        />
-      </Routes>
+      <div className="app-wrapper">
+        <InstallPrompt />
+        <Routes>
+          <Route path="/" element={<EnsaiosPublicos />} />
+          <Route 
+            path="/login" 
+            element={user ? <Navigate to={user.role === 'admin' ? '/admin' : '/dashboard'} /> : <Login onLogin={handleLogin} />} 
+          />
+          <Route 
+            path="/register" 
+            element={user ? <Navigate to="/dashboard" /> : <Register onLogin={handleLogin} />} 
+          />
+          <Route 
+            path="/register-musico" 
+            element={user ? <Navigate to="/dashboard" /> : <RegisterMusico />} 
+          />
+          <Route 
+            path="/dashboard" 
+            element={
+              user && user.role === 'encarregado' ? (
+                <DashboardEncarregado user={user} onLogout={handleLogout} />
+              ) : user && user.role === 'musico' ? (
+                <DashboardMusico user={user} onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" />
+              )
+            } 
+          />
+          <Route 
+            path="/admin" 
+            element={user && user.role === 'admin' ? <DashboardAdmin user={user} onLogout={handleLogout} /> : <Navigate to="/login" />} 
+          />
+        </Routes>
+        <Footer />
+      </div>
     </Router>
   );
 }
