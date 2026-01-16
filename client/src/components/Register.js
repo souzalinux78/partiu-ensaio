@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import api from '../utils/api';
 import { instrumentos, getCategoriaInstrumento } from '../utils/instrumentos';
 import PoliticaPrivacidade from './PoliticaPrivacidade';
+import TermoUso from './TermoUso';
 import './Login.css';
 
 const Register = ({ onLogin }) => {
@@ -22,7 +23,9 @@ const Register = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [aceitaPolitica, setAceitaPolitica] = useState(false);
+  const [aceitaTermo, setAceitaTermo] = useState(false);
   const [showPolitica, setShowPolitica] = useState(false);
+  const [showTermo, setShowTermo] = useState(false);
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -56,6 +59,11 @@ const Register = ({ onLogin }) => {
 
     if (!aceitaPolitica) {
       setError('Você precisa aceitar a Política de Privacidade e LGPD para continuar');
+      return;
+    }
+
+    if (!aceitaTermo) {
+      setError('Você precisa aceitar o Termo de Uso para continuar');
       return;
     }
 
@@ -285,6 +293,28 @@ const Register = ({ onLogin }) => {
               {' '}*
             </label>
           </div>
+          <div className="politica-checkbox-group">
+            <input
+              type="checkbox"
+              id="aceitaTermo"
+              checked={aceitaTermo}
+              onChange={(e) => setAceitaTermo(e.target.checked)}
+              required
+            />
+            <label htmlFor="aceitaTermo">
+              Li e aceito o{' '}
+              <a 
+                href="#" 
+                onClick={(e) => {
+                  e.preventDefault();
+                  setShowTermo(true);
+                }}
+              >
+                Termo de Uso
+              </a>
+              {' '}*
+            </label>
+          </div>
           <button type="submit" disabled={loading} className="btn-primary">
             {loading ? 'Cadastrando...' : 'Cadastrar como Encarregado'}
           </button>
@@ -302,6 +332,10 @@ const Register = ({ onLogin }) => {
       <PoliticaPrivacidade 
         isOpen={showPolitica} 
         onClose={() => setShowPolitica(false)} 
+      />
+      <TermoUso 
+        isOpen={showTermo} 
+        onClose={() => setShowTermo(false)} 
       />
     </div>
   );
