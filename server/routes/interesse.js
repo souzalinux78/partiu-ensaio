@@ -251,11 +251,14 @@ router.post('/:ensaioId', authenticate, async (req, res) => {
                   name: usuario.name,
                   email: usuario.email,
                   role: usuario.role,
+                  tipo: usuario.tipo || null, // Tipo do encarregado (local/regional) - apenas para encarregados
                   instrumento: usuario.instrumento || null,
                   categoria_instrumento: usuario.categoria_instrumento || null,
                   celular: usuario.celular || null,
                   cidade: usuario.cidade || null,
-                  estado: usuario.estado || null
+                  estado: usuario.estado || null,
+                  nome_igreja: usuario.nome_igreja || null, // Igreja do músico, se aplicável
+                  aprovado: usuario.aprovado !== undefined ? usuario.aprovado : null
                 },
                 // Manter compatibilidade com versões antigas do webhook
                 musico: {
@@ -266,8 +269,22 @@ router.post('/:ensaioId', authenticate, async (req, res) => {
                   categoria_instrumento: usuario.categoria_instrumento || null,
                   celular: usuario.celular || null,
                   cidade: usuario.cidade || null,
-                  estado: usuario.estado || null
+                  estado: usuario.estado || null,
+                  nome_igreja: usuario.nome_igreja || null
                 },
+                // Adicionar campo específico para encarregados (mantém compatibilidade)
+                encarregado: usuario.role === 'encarregado' ? {
+                  id: usuario.id,
+                  name: usuario.name,
+                  email: usuario.email,
+                  tipo: usuario.tipo || null, // local ou regional
+                  instrumento: usuario.instrumento || null,
+                  categoria_instrumento: usuario.categoria_instrumento || null,
+                  celular: usuario.celular || null,
+                  cidade: usuario.cidade || null,
+                  estado: usuario.estado || null,
+                  aprovado: usuario.aprovado !== undefined ? usuario.aprovado : null
+                } : null,
                 ensaio: {
                   id: ensaio.id,
                   nome_igreja: ensaio.nome_igreja || ensaio.local || null,
