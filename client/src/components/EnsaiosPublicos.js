@@ -12,9 +12,6 @@ const EnsaiosPublicos = () => {
   const [interesses, setInteresses] = useState({});
   const [processandoInteresse, setProcessandoInteresse] = useState({});
   const [termoPesquisa, setTermoPesquisa] = useState('');
-  const [mesAtual, setMesAtual] = useState(new Date().getMonth());
-  const [anoAtual, setAnoAtual] = useState(new Date().getFullYear());
-  const [mostrarTodos, setMostrarTodos] = useState(false);
   const navigate = useNavigate();
   const loadEnsaiosRef = useRef(null);
 
@@ -27,30 +24,8 @@ const EnsaiosPublicos = () => {
     }
     loadEnsaios();
     
-    // Verificar mudança de mês e atualizar ensaios periodicamente
+    // Recarregar ensaios periodicamente para pegar atualizações
     const interval = setInterval(() => {
-      const agora = new Date();
-      const mesAtualAgora = agora.getMonth();
-      const anoAtualAgora = agora.getFullYear();
-      
-      // Atualizar estado do mês/ano se mudou
-      setMesAtual(prevMes => {
-        if (mesAtualAgora !== prevMes) {
-          console.log('Mês mudou! Recarregando ensaios...');
-          return mesAtualAgora;
-        }
-        return prevMes;
-      });
-      
-      setAnoAtual(prevAno => {
-        if (anoAtualAgora !== prevAno) {
-          console.log('Ano mudou! Recarregando ensaios...');
-          return anoAtualAgora;
-        }
-        return prevAno;
-      });
-      
-      // Sempre recarregar ensaios para pegar atualizações (ex: passou das 20h, mudou de mês)
       if (loadEnsaiosRef.current) {
         loadEnsaiosRef.current();
       }
@@ -60,7 +35,7 @@ const EnsaiosPublicos = () => {
   }, []);
 
   const loadInteresses = useCallback(async () => {
-    if (!user || user.role !== 'musico') return;
+    if (!user || (user.role !== 'musico' && user.role !== 'encarregado')) return;
     
     const interessesMap = {};
     for (const ensaio of ensaios) {
@@ -78,9 +53,9 @@ const EnsaiosPublicos = () => {
     setInteresses(interessesMap);
   }, [user, ensaios]);
 
-  // Carregar interesses se o usuário for músico
+  // Carregar interesses se o usuário for músico ou encarregado
   useEffect(() => {
-    if (user && user.role === 'musico' && ensaios.length > 0) {
+    if (user && (user.role === 'musico' || user.role === 'encarregado') && ensaios.length > 0) {
       loadInteresses();
     }
   }, [ensaios, user, loadInteresses]);
@@ -239,87 +214,13 @@ const EnsaiosPublicos = () => {
     }
   };
 
-  // Filtrar e ordenar ensaios do mês atual (ou próximo se todos já passaram)
-  const filtrarEnsaiosDoMes = (listaEnsaios) => {
-    const hoje = new Date();
-    const horaAtual = hoje.getHours();
-    const hojeNormalizado = new Date();
-    hojeNormalizado.setHours(0, 0, 0, 0);
-    
-    const inicioMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
-    const fimMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 0, 23, 59, 59);
-    const inicioProximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
-    const fimProximoMes = new Date(hoje.getFullYear(), hoje.getMonth() + 2, 0, 23, 59, 59);
-    
-    // Separar ensaios do mês atual e próximo mês
-    const ensaiosMesAtual = [];
-    const ensaiosProximoMes = [];
-    
-    listaEnsaios.forEach(ensaio => {
-      if (!ensaio.proxima_data) return;
-      
-      try {
-        const dataEnsaio = new Date(ensaio.proxima_data + 'T00:00:00');
-        if (isNaN(dataEnsaio.getTime())) return;
-        
-        const estaNoMesAtual = dataEnsaio >= inicioMes && dataEnsaio <= fimMes;
-        const estaNoProximoMes = dataEnsaio >= inicioProximoMes && dataEnsaio <= fimProximoMes;
-        
-        if (estaNoMesAtual) {
-          // Verificar se ainda não passou (considerando horário de 20h)
-          const diffDays = Math.floor((dataEnsaio - hojeNormalizado) / (1000 * 60 * 60 * 24));
-          const aindaNaoPassou = diffDays > 0 || (diffDays === 0 && horaAtual <= 20);
-          
-          if (aindaNaoPassou) {
-            ensaiosMesAtual.push(ensaio);
-          }
-        } else if (estaNoProximoMes) {
-          ensaiosProximoMes.push(ensaio);
-        }
-      } catch {
-        // Ignorar erros
-      }
-    });
-    
-    // Se há ensaios futuros no mês atual, retornar esses
-    // Se não há, retornar os do próximo mês
-    return ensaiosMesAtual.length > 0 ? ensaiosMesAtual : ensaiosProximoMes;
-  };
-
-  // Filtrar ensaios do mês atual (ou próximo se todos já passaram)
-  const ensaiosDoMes = filtrarEnsaiosDoMes(ensaiosFiltrados);
-  
+  // Sempre mostrar todos os ensaios cadastrados (sem filtro por mês)
   // Ordenar ensaios filtrados por data
-  const listaParaExibir = mostrarTodos ? ensaiosFiltrados : ensaiosDoMes;
-  const ensaiosOrdenados = [...listaParaExibir].sort((a, b) => {
+  const ensaiosOrdenados = [...ensaiosFiltrados].sort((a, b) => {
     if (!a.proxima_data) return 1;
     if (!b.proxima_data) return -1;
     return new Date(a.proxima_data) - new Date(b.proxima_data);
   });
-  
-  // Determinar qual mês está sendo exibido
-  const determinarMesExibido = () => {
-    if (ensaiosOrdenados.length === 0) {
-      return new Date(anoAtual, mesAtual, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-    }
-    
-    // Pegar a primeira data dos ensaios ordenados
-    const primeiraData = ensaiosOrdenados[0]?.proxima_data;
-    if (primeiraData) {
-      try {
-        const dataObj = new Date(primeiraData + 'T00:00:00');
-        if (!isNaN(dataObj.getTime())) {
-          return dataObj.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        }
-      } catch {
-        // Se der erro, usar mês atual
-      }
-    }
-    
-    return new Date(anoAtual, mesAtual, 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  };
-  
-  const nomeMesExibido = determinarMesExibido();
 
   return (
     <div className="dashboard">
@@ -357,29 +258,10 @@ const EnsaiosPublicos = () => {
               <h2>Agenda de Ensaios</h2>
               <p className="subtitle">
                 {ensaiosOrdenados.length > 0 
-                  ? (mostrarTodos
-                      ? `Mostrando todos os ensaios (${ensaiosOrdenados.length})`
-                      : `Ensaios de ${nomeMesExibido.charAt(0).toUpperCase() + nomeMesExibido.slice(1)}`
-                    )
-                  : 'Nenhum ensaio agendado para este período'
+                  ? `Ensaios cadastrados (${ensaiosOrdenados.length})`
+                  : 'Nenhum ensaio cadastrado no momento'
                 }
               </p>
-            </div>
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-              <button
-                className={mostrarTodos ? 'btn-secondary' : 'btn-primary'}
-                onClick={() => setMostrarTodos(true)}
-                type="button"
-              >
-                Mostrar todos
-              </button>
-              <button
-                className={!mostrarTodos ? 'btn-secondary' : 'btn-primary'}
-                onClick={() => setMostrarTodos(false)}
-                type="button"
-              >
-                Por mês
-              </button>
             </div>
           </div>
 
