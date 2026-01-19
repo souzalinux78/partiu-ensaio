@@ -7,11 +7,16 @@ import ReportarProblema from './ReportarProblema';
 import './Dashboard.css';
 
 const DashboardEncarregado = ({ user, onLogout }) => {
+  const [activeTab, setActiveTab] = useState('meus');
   const [ensaios, setEnsaios] = useState([]);
+  const [ensaiosPublicos, setEnsaiosPublicos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingPublicos, setLoadingPublicos] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const [interessesModal, setInteressesModal] = useState({ ensaioId: null, interesses: [], loading: false });
+  const [interesses, setInteresses] = useState({}); // { ensaioId_data: true/false }
+  const [processandoInteresse, setProcessandoInteresse] = useState({});
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [formData, setFormData] = useState({
@@ -36,6 +41,13 @@ const DashboardEncarregado = ({ user, onLogout }) => {
   useEffect(() => {
     loadEnsaios();
   }, []);
+
+  useEffect(() => {
+    if (activeTab === 'todos') {
+      loadEnsaiosPublicos();
+      loadInteressesPublicos();
+    }
+  }, [activeTab]);
 
   const loadEnsaios = async () => {
     try {
@@ -260,6 +272,126 @@ const DashboardEncarregado = ({ user, onLogout }) => {
     }
   };
 
+  const loadEnsaiosPublicos = async () => {
+    setLoadingPublicos(true);
+    try {
+      const response = await api.get('/ensaio/public');
+      setEnsaiosPublicos(response.data);
+    } catch (err) {
+      console.error('Erro ao carregar ensaios públicos:', err);
+    } finally {
+      setLoadingPublicos(false);
+    }
+  };
+
+  const loadInteressesPublicos = React.useCallback(async () => {
+    const interessesMap = {};
+    for (const ensaio of ensaiosPublicos) {
+      if (ensaio.proxima_data) {
+        const ensaioId = ensaio.id_original || ensaio.id;
+        try {
+          const response = await api.get(`/interesse/verificar/${ensaioId}?data_ensaio=${ensaio.proxima_data}`);
+          const chave = `${ensaioId}_${ensaio.proxima_data}`;
+          interessesMap[chave] = response.data.temInteresse;
+        } catch (err) {
+          console.error('Erro ao verificar interesse:', err);
+        }
+      }
+    }
+    setInteresses(interessesMap);
+  }, [ensaiosPublicos]);
+
+  useEffect(() => {
+    if (activeTab === 'todos' && ensaiosPublicos.length > 0) {
+      loadInteressesPublicos();
+    }
+  }, [ensaiosPublicos, activeTab, loadInteressesPublicos]);
+
+  const handleInteresse = async (ensaio) => {
+    const ensaioId = ensaio.id_original || ensaio.id;
+    const dataEnsaio = ensaio.proxima_data;
+    const chave = `${ensaioId}_${dataEnsaio}`;
+    
+    if (!dataEnsaio) {
+      alert('Data do ensaio não disponível');
+      return;
+    }
+
+    setProcessandoInteresse({ ...processandoInteresse, [chave]: true });
+
+    try {
+      const temInteresse = interesses[chave];
+      
+      if (temInteresse) {
+        // Remover interesse
+        await api.delete(`/interesse/${ensaioId}`, { data: { data_ensaio: dataEnsaio } });
+        setInteresses({ ...interesses, [chave]: false });
+      } else {
+        // Adicionar interesse
+        await api.post(`/interesse/${ensaioId}`, { data_ensaio: dataEnsaio });
+        setInteresses({ ...interesses, [chave]: true });
+      }
+    } catch (err) {
+      console.error('Erro ao processar interesse:', err);
+      alert(err.response?.data?.error || 'Erro ao processar interesse');
+    } finally {
+      setProcessandoInteresse({ ...processandoInteresse, [chave]: false });
+    }
+  };
+
+  const adicionarAgenda = (ensaio) => {
+    try {
+      const dataEnsaio = ensaio.proxima_data;
+      if (!dataEnsaio) return;
+
+      // Parse da data e horário
+      const [ano, mes, dia] = dataEnsaio.split('-');
+      let horaInicio = '19:00';
+      let horaFim = '21:00';
+      
+      if (ensaio.horario) {
+        const partesHorario = ensaio.horario.split(':');
+        const h = partesHorario[0] || '19';
+        const m = partesHorario[1] || '00';
+        horaInicio = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        const horaFimObj = new Date(`2000-01-01T${horaInicio}:00`);
+        horaFimObj.setHours(horaFimObj.getHours() + 2);
+        horaFim = `${String(horaFimObj.getHours()).padStart(2, '0')}:${String(horaFimObj.getMinutes()).padStart(2, '0')}`;
+      }
+
+      const nomeIgreja = ensaio.nome_igreja || ensaio.local || 'Ensaio Musical';
+      const descricaoTexto = `Ensaio musical${ensaio.nome_encarregado ? `\nEncarregado: ${ensaio.nome_encarregado}` : ''}${ensaio.endereco ? `\nLocal: ${ensaio.endereco}` : ''}`;
+      const localTexto = ensaio.endereco ? 
+        `${ensaio.endereco}${ensaio.cidade ? `, ${ensaio.cidade}` : ''}${ensaio.estado ? ` - ${ensaio.estado}` : ''}` :
+        'Local a confirmar';
+
+      const formatarDataHora = (data, hora) => {
+        const [h, m] = hora.split(':');
+        return `${data.replace(/-/g, '')}T${h.padStart(2, '0')}${m.padStart(2, '0')}00`;
+      };
+
+      const dataInicio = formatarDataHora(dataEnsaio, horaInicio);
+      const dataFim = formatarDataHora(dataEnsaio, horaFim);
+
+      const titulo = encodeURIComponent(`Ensaio - ${nomeIgreja}`);
+      const descricao = encodeURIComponent(descricaoTexto);
+      const local = encodeURIComponent(localTexto);
+
+      const googleCalendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${titulo}&dates=${dataInicio}/${dataFim}&details=${descricao}&location=${local}`;
+
+      window.open(googleCalendarUrl, '_blank');
+    } catch (e) {
+      console.error('Erro ao adicionar à agenda:', e);
+      alert('Não foi possível adicionar à agenda. Tente novamente.');
+    }
+  };
+
+  const ensaiosPublicosOrdenados = [...ensaiosPublicos].sort((a, b) => {
+    if (!a.proxima_data) return 1;
+    if (!b.proxima_data) return -1;
+    return new Date(a.proxima_data) - new Date(b.proxima_data);
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -349,8 +481,8 @@ const DashboardEncarregado = ({ user, onLogout }) => {
       <main className="dashboard-main">
         <div className="dashboard-content">
           <div className="page-header">
-            <h2>Meus Ensaios</h2>
-            {!showForm && (
+            <h2>Dashboard Encarregado</h2>
+            {!showForm && activeTab === 'meus' && (
               <button onClick={() => {
                 setEditingId(null);
                 setShowForm(true);
@@ -376,6 +508,25 @@ const DashboardEncarregado = ({ user, onLogout }) => {
               </button>
             )}
           </div>
+
+          {/* Tabs */}
+          <div className="tabs">
+            <button
+              className={`tab ${activeTab === 'meus' ? 'active' : ''}`}
+              onClick={() => setActiveTab('meus')}
+            >
+              Meus Ensaios ({ensaios.length})
+            </button>
+            <button
+              className={`tab ${activeTab === 'todos' ? 'active' : ''}`}
+              onClick={() => setActiveTab('todos')}
+            >
+              Todos os Ensaios ({ensaiosPublicos.length})
+            </button>
+          </div>
+
+          {/* Conteúdo da aba Meus Ensaios */}
+          {activeTab === 'meus' && (
 
           {showForm && (
             <div className="form-card">
@@ -750,6 +901,150 @@ const DashboardEncarregado = ({ user, onLogout }) => {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          )}
+
+          {/* Conteúdo da aba Todos os Ensaios */}
+          {activeTab === 'todos' && (
+            <div>
+              {loadingPublicos ? (
+                <div className="loading">Carregando ensaios...</div>
+              ) : ensaiosPublicosOrdenados.length === 0 ? (
+                <div className="empty-state">
+                  <p>Não há ensaios públicos disponíveis no momento.</p>
+                </div>
+              ) : (
+                <div className="ensaios-publicos">
+                  <div className="ensaios-grid">
+                    {ensaiosPublicosOrdenados.map((ensaio) => (
+                      <div key={ensaio.id} className="ensaio-card">
+                        {ensaio.foto_local && (
+                          <div className="ensaio-image">
+                            <img
+                              key={`img-${ensaio.id}`}
+                              src={`${getBaseUrl()}${ensaio.foto_local}`}
+                              alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
+                              loading="lazy"
+                              onError={(e) => {
+                                const retryCount = parseInt(e.target.dataset.retryCount || '0', 10);
+                                if (retryCount >= 1) {
+                                  console.error('❌ Imagem não carregou após tentativas:', `${getBaseUrl()}${ensaio.foto_local}`);
+                                  e.target.style.display = 'none';
+                                  return;
+                                }
+                                const baseUrl = getBaseUrl();
+                                const retryUrl = `${baseUrl}${ensaio.foto_local}?t=${Date.now()}&retry=1`;
+                                console.warn('⚠️ Erro ao carregar imagem, tentando novamente:', retryUrl);
+                                e.target.dataset.retryCount = '1';
+                                e.target.src = retryUrl;
+                              }}
+                              onLoad={(e) => {
+                                e.target.dataset.retryCount = '0';
+                                console.log('✅ Imagem carregada:', `${getBaseUrl()}${ensaio.foto_local}`);
+                              }}
+                            />
+                          </div>
+                        )}
+                        <div className="ensaio-content">
+                          <div className="ensaio-header">
+                            <h3>{ensaio.nome_igreja || ensaio.local || 'Sem nome'}</h3>
+                            <span className="status-badge status-aprovado">Aprovado</span>
+                          </div>
+                          <div className="ensaio-info">
+                            {ensaio.proxima_data && (() => {
+                              try {
+                                const dataObj = new Date(ensaio.proxima_data + 'T00:00:00');
+                                if (isNaN(dataObj.getTime())) {
+                                  return null;
+                                }
+                                return (
+                                  <p className="data-destaque">
+                                    📅 {dataObj.toLocaleDateString('pt-BR', { 
+                                      weekday: 'long', 
+                                      year: 'numeric', 
+                                      month: 'long', 
+                                      day: 'numeric',
+                                      timeZone: 'America/Sao_Paulo'
+                                    })}
+                                    {ensaio.horario && (
+                                      <span> às {ensaio.horario}</span>
+                                    )}
+                                  </p>
+                                );
+                              } catch (e) {
+                                return null;
+                              }
+                            })()}
+                            <p><strong>Encarregado:</strong> {ensaio.nome_encarregado || ensaio.encarregado_name || 'N/A'}</p>
+                            {ensaio.instrumento && (
+                              <p>
+                                <strong>Instrumento do Encarregado:</strong> {ensaio.instrumento}
+                                {ensaio.categoria_instrumento && (
+                                  <span> ({ensaio.categoria_instrumento})</span>
+                                )}
+                              </p>
+                            )}
+                            <p><strong>Tipo:</strong> {ensaio.tipo ? ensaio.tipo.charAt(0).toUpperCase() + ensaio.tipo.slice(1) : 'N/A'}</p>
+                            {ensaio.dia_semana && (
+                              <p>
+                                <strong>Dia:</strong> {ensaio.dia_semana}
+                                {ensaio.semana_mes && (
+                                  <span> - {ensaio.semana_mes === -1 ? 'Última' : `${ensaio.semana_mes}ª`} semana do mês</span>
+                                )}
+                              </p>
+                            )}
+                            {ensaio.horario && (
+                              <p><strong>Horário:</strong> {ensaio.horario}</p>
+                            )}
+                            <p>
+                              <strong>Endereço:</strong> {ensaio.endereco || 'N/A'}
+                              {ensaio.endereco && (
+                                <a 
+                                  href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ensaio.endereco + (ensaio.cidade ? `, ${ensaio.cidade}` : '') + (ensaio.estado ? `, ${ensaio.estado}` : ''))}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="maps-link"
+                                  title="Abrir no Google Maps"
+                                >
+                                  {' '}📍 Ver no Maps
+                                </a>
+                              )}
+                            </p>
+                            {ensaio.cidade && <p><strong>Cidade:</strong> {ensaio.cidade}</p>}
+                            {ensaio.estado && <p><strong>Estado:</strong> {ensaio.estado}</p>}
+                          </div>
+                          <div className="ensaio-actions">
+                            {ensaio.proxima_data && (ensaio.id_original || ensaio.id) && (
+                              <button
+                                onClick={() => handleInteresse(ensaio)}
+                                disabled={processandoInteresse[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`]}
+                                className={`btn-interesse ${interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] ? 'interesse-ativo' : ''}`}
+                              >
+                                {processandoInteresse[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] 
+                                  ? 'Processando...' 
+                                  : interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`]
+                                  ? '✓ Tenho Interesse'
+                                  : 'Tenho Interesse'}
+                              </button>
+                            )}
+                            {interesses[`${ensaio.id_original || ensaio.id}_${ensaio.proxima_data}`] && ensaio.proxima_data && (
+                              <button
+                                onClick={() => adicionarAgenda(ensaio)}
+                                className="btn-link"
+                                style={{ marginLeft: '10px' }}
+                                title="Adicionar evento ao calendário"
+                              >
+                                📅 Adicionar à Agenda
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </div>
