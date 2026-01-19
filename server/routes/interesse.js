@@ -66,8 +66,9 @@ router.get('/:ensaioId/ics', authenticate, (req, res) => {
   const { data_ensaio } = req.query;
   const db = getDb();
 
-  if (req.user.role !== 'musico') {
-    return res.status(403).json({ error: 'Apenas músicos podem baixar o arquivo .ics' });
+  // Permitir que músicos e encarregados possam baixar o arquivo .ics
+  if (req.user.role !== 'musico' && req.user.role !== 'encarregado') {
+    return res.status(403).json({ error: 'Acesso negado' });
   }
 
   if (!data_ensaio) {
@@ -102,7 +103,7 @@ router.get('/:ensaioId/ics', authenticate, (req, res) => {
     const dtstart = formatUtcForIcs(startLocal);
     const dtend = formatUtcForIcs(endLocal);
 
-    const uid = `ensaio-${ensaioId}-${data_ensaio}-musico-${req.user.id}@partiuensaio`;
+    const uid = `ensaio-${ensaioId}-${data_ensaio}-${req.user.role}-${req.user.id}@partiuensaio`;
     const summary = `Ensaio - ${ensaio.nome_igreja || ensaio.local || 'Igreja'}`;
     const location = `${ensaio.endereco || ''}${ensaio.cidade ? ` - ${ensaio.cidade}` : ''}${ensaio.estado ? `/${ensaio.estado}` : ''}`.trim();
     const description = [
@@ -136,7 +137,7 @@ router.get('/:ensaioId/ics', authenticate, (req, res) => {
       const startUtc = formatUtcForIcs(startDate);
       const endUtc = formatUtcForIcs(addMinutes(startDate, 5));
       return mkEvent({
-        uid: `ensaio-${ensaioId}-${data_ensaio}-reminder-${idx}-musico-${req.user.id}@partiuensaio`,
+        uid: `ensaio-${ensaioId}-${data_ensaio}-reminder-${idx}-${req.user.role}-${req.user.id}@partiuensaio`,
         dtstart: startUtc,
         dtend: endUtc,
         summary: `Lembrete ${idx}/3 - ${ensaio.nome_igreja || ensaio.local || 'Ensaio'}`,
@@ -177,16 +178,16 @@ router.get('/:ensaioId/ics', authenticate, (req, res) => {
   });
 });
 
-// Registrar interesse de músico em um ensaio
+// Registrar interesse de músico ou encarregado em um ensaio
 router.post('/:ensaioId', authenticate, async (req, res) => {
   const { ensaioId } = req.params;
   const { data_ensaio } = req.body;
-  const musicoId = req.user.id;
+  const usuarioId = req.user.id;
   const db = getDb();
 
-  // Verificar se o usuário é músico
-  if (req.user.role !== 'musico') {
-    return res.status(403).json({ error: 'Apenas músicos podem demonstrar interesse em ensaios' });
+  // Permitir que músicos e encarregados possam demonstrar interesse
+  if (req.user.role !== 'musico' && req.user.role !== 'encarregado') {
+    return res.status(403).json({ error: 'Apenas músicos e encarregados podem demonstrar interesse em ensaios' });
   }
 
   if (!data_ensaio) {
@@ -210,7 +211,7 @@ router.post('/:ensaioId', authenticate, async (req, res) => {
     // Verificar se já existe interesse
     db.get(
       'SELECT * FROM interesses_ensaios WHERE ensaio_id = ? AND musico_id = ? AND data_ensaio = ?',
-      [ensaioId, musicoId, data_ensaio],
+      [ensaioId, usuarioId, data_ensaio],
       (err, interesseExistente) => {
         if (err) {
           return res.status(500).json({ error: 'Erro ao verificar interesse' });
@@ -220,20 +221,20 @@ router.post('/:ensaioId', authenticate, async (req, res) => {
           return res.status(400).json({ error: 'Você já demonstrou interesse neste ensaio' });
         }
 
-        // Buscar dados do músico
-        db.get('SELECT * FROM users WHERE id = ?', [musicoId], async (err, musico) => {
+        // Buscar dados do usuário (músico ou encarregado)
+        db.get('SELECT * FROM users WHERE id = ?', [usuarioId], async (err, usuario) => {
           if (err) {
-            return res.status(500).json({ error: 'Erro ao buscar dados do músico' });
+            return res.status(500).json({ error: 'Erro ao buscar dados do usuário' });
           }
 
-          if (!musico) {
-            return res.status(404).json({ error: 'Músico não encontrado' });
+          if (!usuario) {
+            return res.status(404).json({ error: 'Usuário não encontrado' });
           }
 
-          // Criar interesse
+          // Criar interesse (usando musico_id como campo genérico para qualquer usuário interessado)
           db.run(
             'INSERT INTO interesses_ensaios (ensaio_id, musico_id, data_ensaio) VALUES (?, ?, ?)',
-            [ensaioId, musicoId, data_ensaio],
+            [ensaioId, usuarioId, data_ensaio],
             async function(err) {
               if (err) {
                 return res.status(500).json({ error: 'Erro ao registrar interesse' });
@@ -245,15 +246,27 @@ router.post('/:ensaioId', authenticate, async (req, res) => {
               const webhookData = {
                 tipo: 'interesse_ensaio',
                 interesse_id: interesseId,
+                usuario: {
+                  id: usuario.id,
+                  name: usuario.name,
+                  email: usuario.email,
+                  role: usuario.role,
+                  instrumento: usuario.instrumento || null,
+                  categoria_instrumento: usuario.categoria_instrumento || null,
+                  celular: usuario.celular || null,
+                  cidade: usuario.cidade || null,
+                  estado: usuario.estado || null
+                },
+                // Manter compatibilidade com versões antigas do webhook
                 musico: {
-                  id: musico.id,
-                  name: musico.name,
-                  email: musico.email,
-                  instrumento: musico.instrumento || null,
-                  categoria_instrumento: musico.categoria_instrumento || null,
-                  celular: musico.celular || null,
-                  cidade: musico.cidade || null,
-                  estado: musico.estado || null
+                  id: usuario.id,
+                  name: usuario.name,
+                  email: usuario.email,
+                  instrumento: usuario.instrumento || null,
+                  categoria_instrumento: usuario.categoria_instrumento || null,
+                  celular: usuario.celular || null,
+                  cidade: usuario.cidade || null,
+                  estado: usuario.estado || null
                 },
                 ensaio: {
                   id: ensaio.id,
@@ -346,7 +359,7 @@ router.post('/:ensaioId', authenticate, async (req, res) => {
                 interesse: {
                   id: interesseId,
                   ensaio_id: ensaioId,
-                  musico_id: musicoId,
+                  musico_id: usuarioId,
                   data_ensaio: data_ensaio
                 }
               });
@@ -475,12 +488,17 @@ router.get('/ensaio/:ensaioId', authenticate, requireEncarregado, (req, res) => 
   });
 });
 
-// Verificar se músico tem interesse em um ensaio
+// Verificar se usuário (músico ou encarregado) tem interesse em um ensaio
 router.get('/verificar/:ensaioId', authenticate, (req, res) => {
   const { ensaioId } = req.params;
   const { data_ensaio } = req.query;
-  const musicoId = req.user.id;
+  const usuarioId = req.user.id;
   const db = getDb();
+
+  // Permitir que músicos e encarregados possam verificar interesse
+  if (req.user.role !== 'musico' && req.user.role !== 'encarregado') {
+    return res.status(403).json({ error: 'Acesso negado' });
+  }
 
   if (!data_ensaio) {
     return res.status(400).json({ error: 'Data do ensaio é obrigatória' });
@@ -488,7 +506,7 @@ router.get('/verificar/:ensaioId', authenticate, (req, res) => {
 
   db.get(
     'SELECT * FROM interesses_ensaios WHERE ensaio_id = ? AND musico_id = ? AND data_ensaio = ?',
-    [ensaioId, musicoId, data_ensaio],
+    [ensaioId, usuarioId, data_ensaio],
     (err, interesse) => {
       if (err) {
         return res.status(500).json({ error: 'Erro ao verificar interesse' });

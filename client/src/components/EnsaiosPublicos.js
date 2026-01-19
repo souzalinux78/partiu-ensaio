@@ -190,16 +190,16 @@ const EnsaiosPublicos = () => {
   const handleInteresse = async (ensaio) => {
     // Se não estiver logado, redirecionar para login/cadastro
     if (!user) {
-      const confirmar = window.confirm('Para demonstrar interesse, você precisa estar logado como músico. Deseja fazer login ou se cadastrar?');
+      const confirmar = window.confirm('Para demonstrar interesse, você precisa estar logado. Deseja fazer login ou se cadastrar?');
       if (confirmar) {
         navigate('/login');
       }
       return;
     }
 
-    // Se não for músico, mostrar mensagem
-    if (user.role !== 'musico') {
-      alert('Apenas músicos podem demonstrar interesse em ensaios. Faça login como músico para continuar.');
+    // Permitir que músicos e encarregados possam demonstrar interesse
+    if (user.role !== 'musico' && user.role !== 'encarregado') {
+      alert('Apenas músicos e encarregados podem demonstrar interesse em ensaios. Faça login com uma conta válida para continuar.');
       return;
     }
 
