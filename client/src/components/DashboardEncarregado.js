@@ -527,8 +527,8 @@ const DashboardEncarregado = ({ user, onLogout }) => {
 
           {/* Conteúdo da aba Meus Ensaios */}
           {activeTab === 'meus' && (
-
-          {showForm && (
+            <>
+              {showForm && (
             <div className="form-card">
               <h3>{editingId ? 'Editar Ensaio' : 'Cadastrar Novo Ensaio'}</h3>
               {error && <div className="error-message">{error}</div>}
@@ -903,6 +903,7 @@ const DashboardEncarregado = ({ user, onLogout }) => {
               ))}
             </div>
           )}
+            </>
           )}
 
           {/* Conteúdo da aba Todos os Ensaios */}
