@@ -209,6 +209,9 @@ router.get('/pendentes-confirmacao', async (req, res) => {
     // 4. NÃO tem presença confirmada/ausente
     // 5. NÃO foi reenviado ainda
     // 6. Dentro da janela de confirmação (horário permitido)
+    // 
+    // IMPORTANTE: Para compatibilidade com DISTINCT + ORDER BY no MySQL,
+    // todas as colunas do ORDER BY devem estar no SELECT.
     const query = `
       SELECT DISTINCT
         e.id AS ensaio_id,
@@ -216,6 +219,7 @@ router.get('/pendentes-confirmacao', async (req, res) => {
         u.celular AS telefone,
         u.name AS nome,
         e.nome_igreja AS titulo,
+        e.horario AS horario_raw,
         TIME_FORMAT(e.horario, '%H:%i') AS horario,
         TIMESTAMP(COALESCE(ie.data_ensaio, e.proxima_data), e.horario) AS inicio_ensaio,
         DATE_ADD(
@@ -252,7 +256,7 @@ router.get('/pendentes-confirmacao', async (req, res) => {
           ),
           INTERVAL ? MINUTE
         )
-      ORDER BY e.horario ASC, u.name ASC
+      ORDER BY horario_raw ASC, u.name ASC
     `;
 
     db.all(
@@ -261,7 +265,14 @@ router.get('/pendentes-confirmacao', async (req, res) => {
       (err, rows) => {
         if (err) {
           logger.error('[API ensaios/pendentes-confirmacao] Erro ao buscar pendentes:', err);
+          logger.error('[API ensaios/pendentes-confirmacao] Detalhes do erro:', err.message, err.sql);
           return res.status(500).json({ error: 'Erro ao buscar músicos pendentes' });
+        }
+
+        // Validar se rows existe e é um array
+        if (!Array.isArray(rows)) {
+          logger.warn('[API ensaios/pendentes-confirmacao] Resposta do banco não é array:', typeof rows);
+          return res.status(200).json([]);
         }
 
         if (process.env.NODE_ENV === 'development') {
@@ -269,14 +280,17 @@ router.get('/pendentes-confirmacao', async (req, res) => {
         }
 
         // Formatar resposta (incluir musico_id para facilitar marcação de reenvio)
-        const resultado = rows.map(row => ({
-          ensaio_id: row.ensaio_id,
-          musico_id: row.musico_id,
-          telefone: row.telefone,
-          nome: row.nome,
-          titulo: row.titulo,
-          horario: row.horario
-        }));
+        // Garantir que todos os campos existam antes de mapear
+        const resultado = rows
+          .filter(row => row && row.ensaio_id && row.musico_id) // Filtrar linhas inválidas
+          .map(row => ({
+            ensaio_id: parseInt(row.ensaio_id) || 0,
+            musico_id: parseInt(row.musico_id) || 0,
+            telefone: row.telefone || '',
+            nome: row.nome || '',
+            titulo: row.titulo || '',
+            horario: row.horario || ''
+          }));
 
         res.status(200).json(resultado);
       }

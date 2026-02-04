@@ -481,7 +481,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
             <div className="logo-text">
               <span className="partiu">Partiu</span>
               <span className="ensaio">Ensaio</span>
-              <span style={{fontSize: '0.9rem', color: '#D4AF37', marginTop: '2px'}}>Administração</span>
+              <span style={{fontSize: '0.9rem', color: 'var(--color-gold-primary)', marginTop: '2px'}}>Administração</span>
             </div>
           </div>
           <div className="header-actions">
@@ -679,7 +679,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
                             <button
                               className="btn-secondary"
                               style={{
-                                background: 'linear-gradient(135deg, #D4AF37 0%, #b8942e 100%)',
+                                background: 'linear-gradient(135deg, var(--color-gold-primary) 0%, var(--color-gold-dark) 100%)',
                                 color: '#111',
                                 border: 'none',
                                 flex: '1 1 140px'
@@ -750,7 +750,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
                                   <button
                                     className="btn-secondary"
                                     style={{
-                                      background: 'linear-gradient(135deg, #D4AF37 0%, #b8942e 100%)',
+                                      background: 'linear-gradient(135deg, var(--color-gold-primary) 0%, var(--color-gold-dark) 100%)',
                                       color: '#111',
                                       border: 'none'
                                     }}

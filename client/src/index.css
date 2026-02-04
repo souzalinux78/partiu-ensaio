@@ -1,5 +1,60 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
+/* ============================================
+   PALETA DE CORES - PARTIU ENSAIO
+   ============================================ */
+:root {
+  /* Dourado Institucional (Marca / CTA) */
+  --color-gold-primary: #C9A227;
+  --color-gold-hover: #E0C15A;
+  --color-gold-light: rgba(201, 162, 39, 0.1);
+  --color-gold-dark: #A0821F;
+
+  /* Verde (Status Positivo / Confirmação) */
+  --color-green-primary: #2E7D32;
+  --color-green-hover: #388E3C;
+  --color-green-light: #E8F5E9;
+  --color-green-dark: #1B5E20;
+
+  /* Azul (Navegação / Informação / Regional) */
+  --color-blue-primary: #1565C0;
+  --color-blue-hover: #1976D2;
+  --color-blue-light: #E3F2FD;
+  --color-blue-dark: #0D47A1;
+
+  /* Header Escuro */
+  --color-header-dark: #1C1C1C;
+  --color-header-darker: #151515;
+
+  /* Fundos */
+  --color-bg-primary: #F5F7FA;
+  --color-bg-white: #FFFFFF;
+  --color-bg-light: #FAFAFA;
+
+  /* Textos */
+  --color-text-primary: #1A1A1A;
+  --color-text-secondary: #555555;
+  --color-text-light: #888888;
+  --color-text-white: #FFFFFF;
+
+  /* Bordas e Divisores */
+  --color-border-light: #E0E0E0;
+  --color-border-medium: #CCCCCC;
+  --color-border-dark: #999999;
+
+  /* Estados */
+  --color-success: var(--color-green-primary);
+  --color-warning: #F57C00;
+  --color-error: #D32F2F;
+  --color-info: var(--color-blue-primary);
+
+  /* Sombras */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.15);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.2);
+  --shadow-gold: 0 4px 12px rgba(201, 162, 39, 0.3);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -12,10 +67,11 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+  background: var(--color-bg-primary);
   min-height: 100vh;
   width: 100%;
   overflow-x: hidden;
+  color: var(--color-text-primary);
 }
 
 /* Melhorias de toque em dispositivos móveis */

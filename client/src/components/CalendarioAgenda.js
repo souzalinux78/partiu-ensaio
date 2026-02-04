@@ -27,21 +27,17 @@ const CalendarioAgenda = ({ ensaios = [], loading = false }) => {
     return () => window.removeEventListener('resize', checkMobile);
   }, []);
 
-  // Função para gerar cor baseada no tipo ou encarregado
+  // Função para gerar cor baseada no tipo de ensaio (usando paleta refinada)
   const getEventColor = (ensaio) => {
-    // Cores por tipo
-    if (ensaio.tipo === 'local') {
-      return '#4CAF50'; // Verde para local
+    // Cores por tipo - usando paleta refinada
+    if (ensaio.tipo === 'local' || !ensaio.tipo) {
+      return '#2E7D32'; // Verde refinado para local
     } else if (ensaio.tipo === 'regional') {
-      return '#2196F3'; // Azul para regional
+      return '#1565C0'; // Azul refinado para regional
     }
     
-    // Fallback: cor baseada no hash do nome do encarregado
-    const hash = (ensaio.nome_encarregado || ensaio.encarregado_name || '').split('').reduce((acc, char) => {
-      return char.charCodeAt(0) + ((acc << 5) - acc);
-    }, 0);
-    const hue = Math.abs(hash) % 360;
-    return `hsl(${hue}, 70%, 50%)`;
+    // Fallback: verde (ensaio local padrão)
+    return '#2E7D32';
   };
 
   // Converter ensaios para eventos do FullCalendar
@@ -175,11 +171,11 @@ const CalendarioAgenda = ({ ensaios = [], loading = false }) => {
     <div className="calendario-agenda-inline">
       <div className="calendario-legend">
         <div className="legend-item">
-          <span className="legend-color" style={{ backgroundColor: '#4CAF50' }}></span>
+          <span className="legend-color" style={{ backgroundColor: 'var(--color-green-primary)' }}></span>
           <span>Ensaio Local</span>
         </div>
         <div className="legend-item">
-          <span className="legend-color" style={{ backgroundColor: '#2196F3' }}></span>
+          <span className="legend-color" style={{ backgroundColor: 'var(--color-blue-primary)' }}></span>
           <span>Ensaio Regional</span>
         </div>
       </div>

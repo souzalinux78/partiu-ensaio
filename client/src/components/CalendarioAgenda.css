@@ -85,9 +85,9 @@
 }
 
 .fc-button {
-  background-color: #4CAF50 !important;
-  border-color: #4CAF50 !important;
-  color: white !important;
+  background-color: var(--color-green-primary) !important;
+  border-color: var(--color-green-primary) !important;
+  color: var(--color-text-white) !important;
   padding: 8px 16px !important;
   font-weight: 500 !important;
   border-radius: 4px !important;
@@ -95,18 +95,18 @@
 }
 
 .fc-button:hover {
-  background-color: #45a049 !important;
-  border-color: #45a049 !important;
+  background-color: var(--color-green-hover) !important;
+  border-color: var(--color-green-hover) !important;
 }
 
 .fc-button-active {
-  background-color: #2196F3 !important;
-  border-color: #2196F3 !important;
+  background-color: var(--color-blue-primary) !important;
+  border-color: var(--color-blue-primary) !important;
 }
 
 .fc-button-active:hover {
-  background-color: #1976D2 !important;
-  border-color: #1976D2 !important;
+  background-color: var(--color-blue-hover) !important;
+  border-color: var(--color-blue-hover) !important;
 }
 
 .fc-daygrid-day-number {
@@ -299,7 +299,7 @@
   background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
   padding: 16px;
   border-radius: 8px;
-  border-left: 4px solid #4CAF50; /* Borda verde para destaque */
+  border-left: 4px solid var(--color-green-primary);
   margin-bottom: 4px;
 }
 
@@ -362,13 +362,13 @@
 }
 
 .tipo-badge.tipo-local {
-  background-color: #e8f5e9;
-  color: #2e7d32;
+  background-color: var(--color-green-light);
+  color: var(--color-green-primary);
 }
 
 .tipo-badge.tipo-regional {
-  background-color: #e3f2fd;
-  color: #1565c0;
+  background-color: var(--color-blue-light);
+  color: var(--color-blue-primary);
 }
 
 /* Badge de Ensaio Geral */
@@ -426,8 +426,8 @@
 
 .btn-lembrete {
   width: 100%;
-  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
-  color: #1a1a1a;
+  background: linear-gradient(135deg, var(--color-gold-primary) 0%, var(--color-gold-hover) 100%);
+  color: var(--color-text-primary);
   border: none;
   padding: 14px 20px;
   border-radius: 8px;
@@ -435,15 +435,15 @@
   font-size: 1rem;
   font-weight: 600;
   transition: all 0.3s ease;
-  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+  box-shadow: var(--shadow-gold);
   position: relative;
   overflow: hidden;
 }
 
 .btn-lembrete:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
-  background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+  box-shadow: 0 4px 12px rgba(201, 162, 39, 0.4);
+  background: linear-gradient(135deg, var(--color-gold-hover) 0%, var(--color-gold-primary) 100%);
 }
 
 .btn-lembrete:active:not(:disabled) {
@@ -457,14 +457,14 @@
 }
 
 .btn-lembrete.lembrete-ativo {
-  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
-  color: white;
-  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+  background: linear-gradient(135deg, var(--color-green-primary) 0%, var(--color-green-hover) 100%);
+  color: var(--color-text-white);
+  box-shadow: 0 2px 8px rgba(46, 125, 50, 0.3);
 }
 
 .btn-lembrete.lembrete-ativo:hover {
-  background: linear-gradient(135deg, #45a049 0%, #388e3c 100%);
-  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+  background: linear-gradient(135deg, var(--color-green-hover) 0%, var(--color-green-dark) 100%);
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.4);
 }
 
 .lembrete-info {
