@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import api, { getBaseUrl } from '../utils/api';
+import ImageWithFallback from './ImageWithFallback';
 import { getAuthToken, getUser } from '../utils/auth';
+import CalendarioAgenda from './CalendarioAgenda';
 import './Dashboard.css';
 
 const EnsaiosPublicos = () => {
@@ -12,8 +14,24 @@ const EnsaiosPublicos = () => {
   const [interesses, setInteresses] = useState({});
   const [processandoInteresse, setProcessandoInteresse] = useState({});
   const [termoPesquisa, setTermoPesquisa] = useState('');
+  const [visualizacao, setVisualizacao] = useState('lista'); // 'lista' ou 'calendario'
   const navigate = useNavigate();
   const loadEnsaiosRef = useRef(null);
+
+  const loadEnsaios = useCallback(async () => {
+    try {
+      const response = await api.get('/ensaio/public');
+      setEnsaios(response.data || []);
+      setEnsaiosFiltrados(response.data || []);
+    } catch (err) {
+      console.error('Erro ao carregar ensaios:', err);
+      // Garantir que o estado seja definido mesmo em caso de erro
+      setEnsaios([]);
+      setEnsaiosFiltrados([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     // Verificar se há usuário logado
@@ -32,7 +50,7 @@ const EnsaiosPublicos = () => {
     }, 60000); // Verificar a cada minuto
     
     return () => clearInterval(interval);
-  }, []);
+  }, [loadEnsaios]);
 
   const loadInteresses = useCallback(async () => {
     if (!user || (user.role !== 'musico' && user.role !== 'encarregado')) return;
@@ -60,26 +78,9 @@ const EnsaiosPublicos = () => {
     }
   }, [ensaios, user, loadInteresses]);
 
-  const loadEnsaios = useCallback(async () => {
-    try {
-      const response = await api.get('/ensaio/public');
-      setEnsaios(response.data);
-      setEnsaiosFiltrados(response.data);
-    } catch (err) {
-      console.error('Erro ao carregar ensaios:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-  
   // Atualizar referência
   useEffect(() => {
     loadEnsaiosRef.current = loadEnsaios;
-  }, [loadEnsaios]);
-
-  // Carregar ensaios ao montar
-  useEffect(() => {
-    loadEnsaios();
   }, [loadEnsaios]);
 
   // Função para filtrar ensaios
@@ -203,11 +204,17 @@ const EnsaiosPublicos = () => {
       }
     } catch (err) {
       console.error('Erro ao processar interesse:', err);
-      if (err.response?.status === 401 || err.response?.status === 403) {
+      
+      // Usar mensagem do interceptor se disponível
+      const errorMessage = err.userMessage || err.response?.data?.error || 'Erro ao processar interesse';
+      
+      // Não mostrar alert se já foi redirecionado pelo interceptor
+      if (err.response?.status === 401 && !window.location.pathname.includes('/login')) {
         alert('Sessão expirada. Por favor, faça login novamente.');
         navigate('/login');
-      } else {
-        alert(err.response?.data?.error || 'Erro ao processar interesse');
+      } else if (err.response?.status !== 401) {
+        // Não mostrar alert para 401 se já foi tratado pelo interceptor
+        alert(errorMessage);
       }
     } finally {
       setProcessandoInteresse({ ...processandoInteresse, [chave]: false });
@@ -255,47 +262,72 @@ const EnsaiosPublicos = () => {
         <div className="dashboard-content">
           <div className="page-header">
             <div>
-              <h2>Agenda de Ensaios</h2>
-              <p className="subtitle">
-                {ensaiosOrdenados.length > 0 
-                  ? `Ensaios cadastrados (${ensaiosOrdenados.length})`
-                  : 'Nenhum ensaio cadastrado no momento'
-                }
-              </p>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '15px' }}>
+                <div>
+                  <h2>Agenda de Ensaios</h2>
+                  <p className="subtitle">
+                    {ensaiosOrdenados.length > 0 
+                      ? `Ensaios cadastrados (${ensaiosOrdenados.length})`
+                      : 'Nenhum ensaio cadastrado no momento'
+                    }
+                  </p>
+                </div>
+                <div className="toggle-visualizacao">
+                  <button
+                    className={`toggle-btn ${visualizacao === 'lista' ? 'active' : ''}`}
+                    onClick={() => setVisualizacao('lista')}
+                    type="button"
+                  >
+                    📋 Lista
+                  </button>
+                  <button
+                    className={`toggle-btn ${visualizacao === 'calendario' ? 'active' : ''}`}
+                    onClick={() => setVisualizacao('calendario')}
+                    type="button"
+                  >
+                    📅 Calendário
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Campo de Pesquisa */}
-          <div className="search-container">
-            <div className="search-box">
-              <input
-                type="text"
-                placeholder="Pesquisar por data, cidade, estado, igreja ou localidade..."
-                value={termoPesquisa}
-                onChange={(e) => setTermoPesquisa(e.target.value)}
-                className="search-input"
-              />
+          {/* Campo de Pesquisa - apenas na visualização de lista */}
+          {visualizacao === 'lista' && (
+            <div className="search-container">
+              <div className="search-box">
+                <input
+                  type="text"
+                  placeholder="Pesquisar por data, cidade, estado, igreja ou localidade..."
+                  value={termoPesquisa}
+                  onChange={(e) => setTermoPesquisa(e.target.value)}
+                  className="search-input"
+                />
+                {termoPesquisa && (
+                  <button
+                    onClick={() => setTermoPesquisa('')}
+                    className="search-clear"
+                    title="Limpar pesquisa"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
               {termoPesquisa && (
-                <button
-                  onClick={() => setTermoPesquisa('')}
-                  className="search-clear"
-                  title="Limpar pesquisa"
-                >
-                  ×
-                </button>
+                <p className="search-results">
+                  {ensaiosOrdenados.length === 0 
+                    ? 'Nenhum ensaio encontrado' 
+                    : `${ensaiosOrdenados.length} ${ensaiosOrdenados.length === 1 ? 'ensaio encontrado' : 'ensaios encontrados'}`}
+                </p>
               )}
             </div>
-            {termoPesquisa && (
-              <p className="search-results">
-                {ensaiosOrdenados.length === 0 
-                  ? 'Nenhum ensaio encontrado' 
-                  : `${ensaiosOrdenados.length} ${ensaiosOrdenados.length === 1 ? 'ensaio encontrado' : 'ensaios encontrados'}`}
-              </p>
-            )}
-          </div>
+          )}
 
+          {/* Renderização condicional: Lista ou Calendário */}
           {loading ? (
             <div className="loading">Carregando ensaios...</div>
+          ) : visualizacao === 'calendario' ? (
+            <CalendarioAgenda ensaios={ensaios} loading={loading} />
           ) : ensaiosOrdenados.length === 0 ? (
             <div className="empty-state">
               <p>Não há ensaios agendados no momento.</p>
@@ -307,36 +339,10 @@ const EnsaiosPublicos = () => {
                   <div key={ensaio.id} className="ensaio-card">
                     {ensaio.foto_local && (
                       <div className="ensaio-image">
-                        <img
-                          key={`img-${ensaio.id}`}
-                          src={`${getBaseUrl()}${ensaio.foto_local}`}
+                        <ImageWithFallback
+                          src={ensaio.foto_local}
                           alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
-                          loading="lazy"
-                          onError={(e) => {
-                            // Evitar loop infinito: verificar se já tentou recarregar
-                            const retryCount = parseInt(e.target.dataset.retryCount || '0', 10);
-                            
-                            if (retryCount >= 1) {
-                              // Já tentou uma vez, esconder imagem e parar
-                              console.error('❌ Imagem não carregou após tentativas:', `${getBaseUrl()}${ensaio.foto_local}`);
-                              e.target.style.display = 'none';
-                              return;
-                            }
-                            
-                            // Primeira tentativa: adicionar timestamp e tentar novamente
-                            const baseUrl = getBaseUrl();
-                            const imagePath = ensaio.foto_local;
-                            const retryUrl = `${baseUrl}${imagePath}?t=${Date.now()}&retry=1`;
-                            
-                            console.warn('⚠️ Erro ao carregar imagem, tentando novamente:', retryUrl);
-                            e.target.dataset.retryCount = '1';
-                            e.target.src = retryUrl;
-                          }}
-                          onLoad={(e) => {
-                            // Limpar contador de retry se carregou com sucesso
-                            e.target.dataset.retryCount = '0';
-                            console.log('✅ Imagem carregada:', `${getBaseUrl()}${ensaio.foto_local}`);
-                          }}
+                          className="ensaio-img"
                         />
                       </div>
                     )}
@@ -346,6 +352,7 @@ const EnsaiosPublicos = () => {
                         <span className="status-badge status-aprovado">Aprovado</span>
                       </div>
                       <div className="ensaio-info">
+                        {/* Data e Horário em destaque */}
                         {ensaio.proxima_data && (() => {
                           try {
                             const dataObj = new Date(ensaio.proxima_data + 'T00:00:00');
@@ -370,32 +377,10 @@ const EnsaiosPublicos = () => {
                             return null;
                           }
                         })()}
-                        <p><strong>Encarregado:</strong> {ensaio.nome_encarregado || ensaio.encarregado_name || 'N/A'}</p>
-                        <p><strong>Tipo:</strong> {ensaio.tipo ? ensaio.tipo.charAt(0).toUpperCase() + ensaio.tipo.slice(1) : 'N/A'}</p>
-                        {ensaio.dia_semana && (
-                          <p>
-                            <strong>Dia:</strong> {ensaio.dia_semana}
-                            {ensaio.semana_mes && (
-                              <span> - {ensaio.semana_mes === -1 ? 'Última' : `${ensaio.semana_mes}ª`} semana do mês</span>
-                            )}
-                          </p>
-                        )}
-                        {ensaio.horario && (
-                          <p><strong>Horário:</strong> {ensaio.horario}</p>
-                        )}
-                        <p>
-                          <strong>Endereço:</strong> {ensaio.endereco || 'N/A'}
-                          {ensaio.endereco && (
-                            <a 
-                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(ensaio.endereco + (ensaio.cidade ? `, ${ensaio.cidade}` : '') + (ensaio.estado ? `, ${ensaio.estado}` : ''))}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="maps-link"
-                              title="Abrir no Google Maps"
-                            >
-                              {' '}📍 Ver no Maps
-                            </a>
-                          )}
+                        
+                        {/* Encarregado */}
+                        <p className="ensaio-encarregado">
+                          <strong>👤 Encarregado:</strong> {ensaio.nome_encarregado || ensaio.encarregado_name || 'N/A'}
                         </p>
                       </div>
                       <div className="ensaio-actions">

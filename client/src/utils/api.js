@@ -76,17 +76,95 @@ api.interceptors.request.use(
     
     if (!isProduction) {
       config.baseURL = 'http://localhost:5000/api';
-      console.log('🔧 FORÇANDO baseURL para:', config.baseURL);
-      console.log('   URL completa será:', config.baseURL + config.url);
     }
     
+    // Adicionar token JWT do localStorage
+    // Adicionar token JWT do localStorage
     const token = localStorage.getItem('token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
+      
+      // Log apenas em desenvolvimento para debug
+      if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
+        console.log('[API] Token JWT adicionado ao header Authorization para:', config.url || config.baseURL);
+      }
+    } else {
+      // Log apenas em desenvolvimento para debug
+      if (process.env.NODE_ENV === 'development' || window.location.hostname === 'localhost') {
+        console.warn('[API] Nenhum token encontrado no localStorage para:', config.url || config.baseURL);
+      }
     }
+    
     return config;
   },
   (error) => {
+    console.error('[API] Erro no interceptor de requisição:', error);
+    return Promise.reject(error);
+  }
+);
+
+// Interceptor de resposta para tratar erros globalmente
+api.interceptors.response.use(
+  (response) => {
+    return response;
+  },
+  (error) => {
+    // Tratar erros de rede
+    if (!error.response) {
+      console.error('[API] Erro de rede:', error.message);
+      error.userMessage = 'Erro de conexão. Verifique sua internet.';
+      return Promise.reject(error);
+    }
+
+    // Tratar erros HTTP
+    const status = error.response.status;
+    const data = error.response.data;
+
+    // 401 - Não autorizado (token inválido/expirado)
+    if (status === 401) {
+      // Limpar token inválido
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
+      
+      // Redirecionar para login apenas se não estiver na página de login
+      if (!window.location.pathname.includes('/login') && 
+          !window.location.pathname.includes('/register')) {
+        window.location.href = '/login';
+      }
+      
+      error.userMessage = 'Sessão expirada. Faça login novamente.';
+      return Promise.reject(error);
+    }
+
+    // 403 - Acesso negado
+    if (status === 403) {
+      // Limpar dados e redirecionar para login se necessário
+      const currentPath = window.location.pathname;
+      if (currentPath.includes('/admin') || currentPath.includes('/dashboard')) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      }
+      
+      error.userMessage = data?.error || 'Acesso negado. Você não tem permissão para esta ação.';
+      return Promise.reject(error);
+    }
+
+    // 404 - Não encontrado
+    if (status === 404) {
+      error.userMessage = data?.error || 'Recurso não encontrado.';
+      return Promise.reject(error);
+    }
+
+    // 500 - Erro do servidor
+    if (status >= 500) {
+      error.userMessage = 'Erro no servidor. Tente novamente mais tarde.';
+      console.error('[API] Erro do servidor:', data);
+      return Promise.reject(error);
+    }
+
+    // Outros erros
+    error.userMessage = data?.error || 'Erro ao processar requisição.';
     return Promise.reject(error);
   }
 );

@@ -237,14 +237,99 @@ const checkAndAddMissingColumns = async () => {
       console.log('✅ Coluna "nome_igreja" já existe na tabela users');
     }
 
+    // Criar tabela de presenças (se não existir)
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS presencas_ensaios (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        ensaio_id INT NOT NULL,
+        musico_id INT NOT NULL,
+        data_ensaio DATE NOT NULL COMMENT 'Data específica da ocorrência do ensaio',
+        status ENUM('confirmado', 'ausente_justificado') NOT NULL DEFAULT 'confirmado',
+        origem ENUM('whatsapp', 'manual') NOT NULL DEFAULT 'manual' COMMENT 'Origem da confirmação',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (ensaio_id) REFERENCES ensaios(id) ON DELETE CASCADE,
+        FOREIGN KEY (musico_id) REFERENCES users(id) ON DELETE CASCADE,
+        UNIQUE KEY uk_ensaio_musico_data (ensaio_id, musico_id, data_ensaio),
+        INDEX idx_ensaio_id (ensaio_id),
+        INDEX idx_musico_id (musico_id),
+        INDEX idx_data_ensaio (data_ensaio),
+        INDEX idx_status (status),
+        INDEX idx_origem (origem)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+    `);
+    console.log('✅ Tabela presencas_ensaios criada/verificada com sucesso');
+
+    // Adicionar coluna reenviado_whatsapp na tabela interesses_ensaios (se não existir)
+    try {
+      const [columns] = await pool.execute(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = ? 
+        AND TABLE_NAME = 'interesses_ensaios' 
+        AND COLUMN_NAME = 'reenviado_whatsapp'
+      `, [dbConfig.database]);
+      
+      if (columns.length === 0) {
+        console.log('📝 Adicionando coluna "reenviado_whatsapp" na tabela interesses_ensaios...');
+        await pool.execute(`
+          ALTER TABLE interesses_ensaios 
+          ADD COLUMN reenviado_whatsapp TINYINT(1) DEFAULT 0 
+          COMMENT 'Flag para controlar reenvio de confirmação via WhatsApp (0 = não reenviado, 1 = reenviado)' 
+          AFTER webhook_enviado
+        `);
+        console.log('✅ Coluna "reenviado_whatsapp" adicionada com sucesso!');
+      } else {
+        console.log('✅ Coluna "reenviado_whatsapp" já existe na tabela interesses_ensaios');
+      }
+    } catch (err) {
+      if (err.code === 'ER_DUP_FIELDNAME') {
+        console.log('✅ Coluna "reenviado_whatsapp" já existe na tabela interesses_ensaios');
+      } else {
+        console.error('Erro ao verificar/adicionar coluna "reenviado_whatsapp":', err.message);
+      }
+    }
+
+    // Adicionar coluna relatorio_enviado na tabela ensaios (se não existir)
+    try {
+      const [columns] = await pool.execute(`
+        SELECT COLUMN_NAME 
+        FROM INFORMATION_SCHEMA.COLUMNS 
+        WHERE TABLE_SCHEMA = ? 
+        AND TABLE_NAME = 'ensaios' 
+        AND COLUMN_NAME = 'relatorio_enviado'
+      `, [dbConfig.database]);
+      
+      if (columns.length === 0) {
+        console.log('📝 Adicionando coluna "relatorio_enviado" na tabela ensaios...');
+        await pool.execute(`
+          ALTER TABLE ensaios 
+          ADD COLUMN relatorio_enviado TINYINT(1) DEFAULT 0 
+          COMMENT 'Flag para controlar envio de relatório de presença (0 = não enviado, 1 = enviado)' 
+          AFTER status
+        `);
+        console.log('✅ Coluna "relatorio_enviado" adicionada com sucesso!');
+      } else {
+        console.log('✅ Coluna "relatorio_enviado" já existe na tabela ensaios');
+      }
+    } catch (err) {
+      if (err.code === 'ER_DUP_FIELDNAME') {
+        console.log('✅ Coluna "relatorio_enviado" já existe na tabela ensaios');
+      } else {
+        console.error('Erro ao verificar/adicionar coluna "relatorio_enviado":', err.message);
+      }
+    }
+
     // (Google OAuth removido) — não fazemos mais migrações de colunas google_*.
     // Se essas colunas já existirem no banco, não afetam o sistema.
   } catch (err) {
     // Se a coluna já existe, ignorar erro
     if (err.code === 'ER_DUP_FIELDNAME') {
       console.log('✅ Coluna "tipo" já existe na tabela users');
+    } else if (err.code === 'ER_TABLE_EXISTS_ERROR') {
+      console.log('✅ Tabela presencas_ensaios já existe');
     } else {
-      console.error('Erro ao verificar/adicionar coluna "tipo":', err.message);
+      console.error('Erro ao verificar/adicionar coluna ou tabela:', err.message);
     }
   }
 };

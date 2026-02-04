@@ -1039,4 +1039,63 @@ router.delete('/:id', authenticate, requireEncarregado, (req, res) => {
   });
 });
 
+// =====================================================
+// ENDPOINT: Buscar ensaio do dia atual por telefone
+// =====================================================
+// GET /api/ensaio/por-telefone/:telefone
+// 
+// Descrição:
+// Endpoint para integração com n8n + WhatsApp que identifica
+// automaticamente se um músico possui ensaio no dia atual,
+// baseado no número de telefone.
+//
+// Funciona em ambiente local e produção:
+// - LOCAL: http://localhost:5000/api/ensaio/por-telefone/{telefone}
+// - PRODUÇÃO: https://partiuensaio.automatizeonline.com.br/api/ensaio/por-telefone/{telefone}
+//
+// Parâmetros:
+// - telefone: Número de telefone (qualquer formato aceito)
+//   Exemplos: "5511974605594", "(11) 97460-5594", "11974605594"
+//
+// Resposta de sucesso (200):
+// {
+//   "ensaio_id": 123,
+//   "titulo": "Igreja Central",
+//   "horario": "20:00",
+//   "data": "2024-01-15"
+// }
+//
+// Resposta quando não houver ensaio (404):
+// {
+//   "message": "Nenhum ensaio encontrado para hoje"
+// }
+//
+// Observação:
+// Este endpoint será consumido por fluxos n8n para confirmação
+// de presença via WhatsApp. Não altera lógica de presença.
+// =====================================================
+router.get('/por-telefone/:telefone', async (req, res) => {
+  try {
+    const { telefone } = req.params;
+    const ensaiosController = require('../controllers/ensaiosController');
+
+    // Buscar ensaio do dia atual pelo telefone
+    const ensaio = await ensaiosController.buscarEnsaioPorTelefone(telefone);
+
+    if (!ensaio) {
+      // Retornar objeto vazio (não erro 404) para facilitar integração n8n
+      return res.status(200).json({});
+    }
+
+    // Retornar ensaio encontrado
+    res.status(200).json(ensaio);
+  } catch (error) {
+    const logger = require('../utils/logger');
+    logger.error('Erro no endpoint /por-telefone:', error);
+    
+    // Retornar objeto vazio (não erro 500) para facilitar integração n8n
+    return res.status(200).json({});
+  }
+});
+
 module.exports = router;

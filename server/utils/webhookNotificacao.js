@@ -1,15 +1,36 @@
 const axios = require('axios');
 const { getDb } = require('../database-mysql');
+const logger = require('./logger');
 
 const WEBHOOK_URL = 'https://webhook.automatizeonline.com.br/webhook/cadastro-ensaio';
 
-// Função para verificar e enviar notificações de ensaios do dia
+// Função auxiliar para obter hora/minuto de São Paulo (mesma lógica do pushScheduler)
+function getSaoPauloParts(date = new Date()) {
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: process.env.APP_TIMEZONE || 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false
+  });
+  const parts = fmt.formatToParts(date).reduce((acc, p) => {
+    if (p.type !== 'literal') acc[p.type] = p.value;
+    return acc;
+  }, {});
+  const hour = parseInt(parts.hour, 10);
+  const minute = parseInt(parts.minute, 10);
+  return { hour, minute };
+}
+
+// Função para verificar e enviar notificações de ensaios do dia às 10:00
 async function verificarEEnviarNotificacoes() {
   const db = getDb();
   const hoje = new Date();
   const hojeStr = hoje.toISOString().split('T')[0]; // YYYY-MM-DD
   
-  console.log(`\n=== VERIFICANDO ENSAIOS DO DIA: ${hojeStr} ===`);
+  logger.info(`Verificando ensaios do dia: ${hojeStr}`);
   
   // Buscar ensaios que ocorrem hoje
   db.all(
@@ -22,16 +43,16 @@ async function verificarEEnviarNotificacoes() {
     [hojeStr],
     async (err, ensaios) => {
       if (err) {
-        console.error('Erro ao buscar ensaios do dia:', err);
+        logger.error('Erro ao buscar ensaios do dia:', err);
         return;
       }
 
       if (ensaios.length === 0) {
-        console.log('Nenhum ensaio com interesses não notificados encontrado para hoje');
+        logger.debug('Nenhum ensaio com interesses não notificados encontrado para hoje');
         return;
       }
 
-      console.log(`Encontrados ${ensaios.length} ensaio(s) com interesses para notificar`);
+      logger.info(`Encontrados ${ensaios.length} ensaio(s) com interesses para notificar`);
 
       // Processar cada ensaio
       for (const ensaio of ensaios) {
@@ -45,7 +66,7 @@ async function verificarEEnviarNotificacoes() {
 async function processarEnsaio(ensaio, dataEnsaio) {
   const db = getDb();
   
-  console.log(`\n📅 Processando ensaio ID ${ensaio.id} - ${ensaio.nome_igreja}`);
+  logger.info(`Processando ensaio ID ${ensaio.id} - ${ensaio.nome_igreja}`);
 
   // Buscar todos os músicos interessados neste ensaio nesta data
   db.all(
@@ -58,51 +79,64 @@ async function processarEnsaio(ensaio, dataEnsaio) {
     [ensaio.id, dataEnsaio],
     async (err, musicos) => {
       if (err) {
-        console.error(`Erro ao buscar músicos interessados no ensaio ${ensaio.id}:`, err);
+        logger.error(`Erro ao buscar músicos interessados no ensaio ${ensaio.id}:`, err);
         return;
       }
 
       if (musicos.length === 0) {
-        console.log(`Nenhum músico interessado encontrado para o ensaio ${ensaio.id}`);
+        logger.debug(`Nenhum músico interessado encontrado para o ensaio ${ensaio.id}`);
         return;
       }
 
-      console.log(`Encontrados ${musicos.length} músico(s) interessado(s)`);
+      logger.info(`Encontrados ${musicos.length} músico(s) interessado(s)`);
+
+      // Formatar horário para exibição
+      const horarioFormatado = ensaio.horario || '20:00';
+      const horarioDisplay = horarioFormatado.length === 5 ? horarioFormatado : horarioFormatado.substring(0, 5);
+      
+      // Preparar mensagem amigável e clara
+      const mensagemLembrete = `🎵 Lembrete: Hoje tem ensaio às ${horarioDisplay}! 🎵\n\n` +
+        `📍 ${ensaio.nome_igreja || ensaio.local || 'Ensaio'}\n` +
+        (ensaio.endereco ? `📍 ${ensaio.endereco}\n` : '') +
+        (ensaio.cidade || ensaio.estado ? `📍 ${[ensaio.cidade, ensaio.estado].filter(Boolean).join(', ')}\n` : '') +
+        (ensaio.nome_encarregado ? `👤 Encarregado: ${ensaio.nome_encarregado}\n` : '') +
+        (ensaio.celular ? `📱 Contato: ${ensaio.celular}\n` : '') +
+        `\n✨ Nos vemos lá! ✨`;
 
       // Preparar dados para o webhook
       const webhookData = {
-        tipo: 'notificacao_ensaio',
+        tipo: 'lembrete_ensaio',
+        mensagem: mensagemLembrete,
         ensaio: {
           id: ensaio.id,
-          nome_igreja: ensaio.nome_igreja,
-          endereco: ensaio.endereco,
-          cidade: ensaio.cidade,
-          estado: ensaio.estado,
-          horario: ensaio.horario,
+          nome_igreja: ensaio.nome_igreja || ensaio.local || 'Ensaio',
+          endereco: ensaio.endereco || null,
+          cidade: ensaio.cidade || null,
+          estado: ensaio.estado || null,
+          horario: horarioDisplay,
           data: dataEnsaio,
-          nome_encarregado: ensaio.nome_encarregado,
-          celular: ensaio.celular,
-          tipo: ensaio.tipo,
-          instrumento: ensaio.instrumento,
-          categoria_instrumento: ensaio.categoria_instrumento
+          nome_encarregado: ensaio.nome_encarregado || null,
+          celular: ensaio.celular || null,
+          tipo: ensaio.tipo || null
         },
         musicos_interessados: musicos.map(m => ({
           id: m.id,
           name: m.name,
           email: m.email,
-          instrumento: m.instrumento,
-          categoria_instrumento: m.categoria_instrumento,
-          celular: m.celular,
-          cidade: m.cidade,
-          estado: m.estado
+          instrumento: m.instrumento || null,
+          categoria_instrumento: m.categoria_instrumento || null,
+          celular: m.celular || null,
+          cidade: m.cidade || null,
+          estado: m.estado || null
         })),
         total_musicos: musicos.length,
-        data_notificacao: new Date().toISOString()
+        data_notificacao: new Date().toISOString(),
+        hora_notificacao: '10:00'
       };
 
       // Enviar webhook
       try {
-        console.log('Enviando webhook de notificação...');
+        logger.info('Enviando webhook de notificação...');
         const response = await axios.post(WEBHOOK_URL, webhookData, {
           headers: {
             'Content-Type': 'application/json'
@@ -110,8 +144,7 @@ async function processarEnsaio(ensaio, dataEnsaio) {
           timeout: 15000
         });
         
-        console.log('✅ Webhook enviado com sucesso via POST!');
-        console.log('Status:', response.status);
+        logger.info(`Webhook enviado com sucesso via POST! Status: ${response.status}`);
         
         // Marcar como enviado
         db.run(
@@ -119,19 +152,19 @@ async function processarEnsaio(ensaio, dataEnsaio) {
           [ensaio.id, dataEnsaio],
           (err) => {
             if (err) {
-              console.error('Erro ao marcar webhook como enviado:', err);
+              logger.error('Erro ao marcar webhook como enviado:', err);
             } else {
-              console.log(`✅ Interesses marcados como notificados para o ensaio ${ensaio.id}`);
+              logger.info(`Interesses marcados como notificados para o ensaio ${ensaio.id}`);
             }
           }
         );
       } catch (webhookError) {
-        console.error('❌ ERRO ao enviar webhook via POST:', webhookError.message);
+        logger.error('ERRO ao enviar webhook via POST:', webhookError);
         
         // Tentar GET como fallback
         if (webhookError.response?.status === 404 && 
             webhookError.response?.data?.message?.includes('GET')) {
-          console.log('⚠️ Tentando GET como fallback...');
+          logger.warn('Tentando GET como fallback...');
           
           try {
             const params = new URLSearchParams();
@@ -146,7 +179,7 @@ async function processarEnsaio(ensaio, dataEnsaio) {
             const getUrl = `${WEBHOOK_URL}?${params.toString()}`;
             const getResponse = await axios.get(getUrl, { timeout: 15000 });
             
-            console.log('✅ Webhook enviado com sucesso via GET!');
+            logger.info('Webhook enviado com sucesso via GET!');
             
             // Marcar como enviado
             db.run(
@@ -154,14 +187,14 @@ async function processarEnsaio(ensaio, dataEnsaio) {
               [ensaio.id, dataEnsaio],
               (err) => {
                 if (err) {
-                  console.error('Erro ao marcar webhook como enviado:', err);
+                  logger.error('Erro ao marcar webhook como enviado:', err);
                 } else {
-                  console.log(`✅ Interesses marcados como notificados para o ensaio ${ensaio.id}`);
+                  logger.info(`Interesses marcados como notificados para o ensaio ${ensaio.id}`);
                 }
               }
             );
           } catch (getError) {
-            console.error('❌ ERRO ao enviar webhook via GET:', getError.message);
+            logger.error('ERRO ao enviar webhook via GET:', getError);
           }
         }
       }
@@ -169,17 +202,26 @@ async function processarEnsaio(ensaio, dataEnsaio) {
   );
 }
 
-// Iniciar verificação periódica (a cada hora)
+// Iniciar verificação periódica (a cada 15 minutos, disparo às 10:00)
 function iniciarVerificacaoPeriodica() {
-  // Verificar imediatamente ao iniciar
-  verificarEEnviarNotificacoes();
+  logger.info('✅ Sistema de lembretes de ensaios iniciado (verificação a cada 15 minutos, disparo às 10:00)');
+
+  const tick = async () => {
+    const { hour, minute } = getSaoPauloParts();
+    // Verificar às 10:00 (janela de 15 minutos: entre 10:00 e 10:15)
+    // Isso garante que mesmo se o processo atrasar, ainda enviará o lembrete
+    if (hour === 10 && minute >= 0 && minute < 15) {
+      const now = new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+      logger.info(`⏰ ${now} - Verificando lembretes de ensaios...`);
+      await verificarEEnviarNotificacoes();
+    }
+  };
+
+  // Verificar imediatamente se já são 10:00
+  tick();
   
-  // Verificar a cada hora
-  setInterval(() => {
-    verificarEEnviarNotificacoes();
-  }, 60 * 60 * 1000); // 1 hora em milissegundos
-  
-  console.log('✅ Sistema de notificações de ensaios iniciado (verificação a cada 1 hora)');
+  // Verificar a cada 15 minutos
+  setInterval(tick, 15 * 60 * 1000); // 15 minutos em milissegundos
 }
 
 module.exports = {

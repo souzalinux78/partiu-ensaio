@@ -18,6 +18,13 @@ echo.
 
 cd /d "%~dp0\server"
 
+REM Verificar se node_modules existe no backend
+if not exist "node_modules" (
+    echo Instalando dependências do backend...
+    call npm install
+    echo.
+)
+
 set PORT=5000
 set NODE_ENV=development
 set JWT_SECRET=27d50f6c877491c373e91a4c4ef90a3ef1bef914a18b571eeb8c2d8bf4b87cef

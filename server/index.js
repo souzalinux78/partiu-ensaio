@@ -2,6 +2,15 @@
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
+// Validar variáveis de ambiente antes de continuar
+const { validateEnvironment } = require('./utils/validateEnv');
+const logger = require('./utils/logger');
+
+if (!validateEnvironment()) {
+  logger.error('❌ Falha na validação de variáveis de ambiente. Encerrando...');
+  process.exit(1);
+}
+
 const express = require('express');
 const cors = require('cors');
 // Escolha o banco de dados: 'database' (SQLite) ou 'database-mysql' (MySQL)
@@ -13,6 +22,7 @@ const userRoutes = require('./routes/user');
 const interesseRoutes = require('./routes/interesse');
 const pushRoutes = require('./routes/push');
 const reportRoutes = require('./routes/report');
+const adminRoutes = require('./routes/admin');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -25,17 +35,19 @@ app.use(express.urlencoded({ extended: true }));
 
 // Servir arquivos estáticos (uploads) com headers CORS e cache
 const uploadsPath = path.join(__dirname, 'uploads');
-console.log('📁 Diretório de uploads:', uploadsPath);
+logger.info('📁 Diretório de uploads:', uploadsPath);
 
 // Verificar se o diretório existe
 if (!require('fs').existsSync(uploadsPath)) {
   require('fs').mkdirSync(uploadsPath, { recursive: true });
-  console.log('✅ Diretório de uploads criado');
+  logger.info('✅ Diretório de uploads criado');
 }
 
+// Servir arquivos estáticos (uploads) com headers CORS e cache
+// O express.static já retorna 404 automaticamente se o arquivo não existir
+// O frontend trata isso com placeholder via ImageWithFallback
 app.use('/uploads', express.static(uploadsPath, {
   setHeaders: (res, filePath) => {
-    console.log('📤 Servindo arquivo:', filePath);
     // Adicionar headers CORS para imagens
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
@@ -74,16 +86,51 @@ app.get('/gerar-icones', (req, res) => {
 // Rotas
 app.use('/api/auth', authRoutes);
 app.use('/api/ensaio', ensaioRoutes);
+app.use('/api/ensaios', require('./routes/ensaios')); // Rotas plural para n8n
 app.use('/api/user', userRoutes);
 app.use('/api/interesse', interesseRoutes);
+app.use('/api/presencas', require('./routes/presencas')); // Rotas de presença via WhatsApp
+app.use('/api/dashboard', require('./routes/dashboard')); // Rotas de dashboard web
 app.use('/api/push', pushRoutes);
 app.use('/api/report', reportRoutes);
+app.use('/api/admin', adminRoutes);
+
+// Health check endpoint (sem autenticação)
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || 'development'
+  });
+});
+
+// Middleware de tratamento de erros global
+app.use((err, req, res, next) => {
+  logger.error('Erro não tratado na rota:', req.path, err);
+  
+  // Não expor detalhes do erro em produção
+  const isProd = process.env.NODE_ENV === 'production';
+  const errorMessage = isProd 
+    ? 'Erro interno do servidor' 
+    : err.message || 'Erro interno do servidor';
+  
+  res.status(err.status || 500).json({
+    error: errorMessage,
+    ...(isProd ? {} : { stack: err.stack })
+  });
+});
+
+// Middleware para rotas não encontradas
+app.use((req, res) => {
+  logger.warn(`Rota não encontrada: ${req.method} ${req.path}`);
+  res.status(404).json({ error: 'Rota não encontrada' });
+});
 
 // Inicializar banco de dados
 (async () => {
   try {
     await db.init();
-    console.log('✅ Banco de dados inicializado');
+    logger.info('✅ Banco de dados inicializado');
     
     // Criar usuário admin padrão se não existir (já é feito no init do MySQL)
     // db.createDefaultAdmin(); // MySQL já faz isso no init
@@ -97,39 +144,49 @@ app.use('/api/report', reportRoutes);
     iniciarPushScheduler();
     
     app.listen(PORT, () => {
-      console.log(`✅ Servidor rodando na porta ${PORT}`);
-      console.log(`📡 API disponível em http://localhost:${PORT}/api`);
+      logger.info(`✅ Servidor rodando na porta ${PORT}`);
+      logger.info(`📡 API disponível em http://localhost:${PORT}/api`);
+      logger.info(`🌍 Ambiente: ${process.env.NODE_ENV || 'development'}`);
     }).on('error', (err) => {
       if (err.code === 'EADDRINUSE') {
-        console.error(`\n❌ ERRO: A porta ${PORT} já está em uso!\n`);
-        console.error('Para resolver, execute um dos comandos abaixo:\n');
-        console.error('Windows PowerShell:');
-        console.error('  $pid = (Get-NetTCPConnection -LocalPort 5000).OwningProcess');
-        console.error('  Stop-Process -Id $pid -Force\n');
-        console.error('Ou use:');
-        console.error('  netstat -ano | findstr :5000');
-        console.error('  taskkill /PID <número_do_pid> /F\n');
-        console.error('Ou altere a porta no arquivo .env:\n');
-        console.error('  PORT=5001\n');
+        logger.error(`\n❌ ERRO: A porta ${PORT} já está em uso!\n`);
+        logger.error('Para resolver, execute um dos comandos abaixo:\n');
+        logger.error('Windows PowerShell:');
+        logger.error('  $pid = (Get-NetTCPConnection -LocalPort 5000).OwningProcess');
+        logger.error('  Stop-Process -Id $pid -Force\n');
+        logger.error('Ou use:');
+        logger.error('  netstat -ano | findstr :5000');
+        logger.error('  taskkill /PID <número_do_pid> /F\n');
+        logger.error('Ou altere a porta no arquivo .env:\n');
+        logger.error('  PORT=5001\n');
       } else {
-        console.error('Erro ao iniciar servidor:', err);
+        logger.error('Erro ao iniciar servidor:', err);
       }
       process.exit(1);
     });
   } catch (err) {
-    console.error('❌ Erro ao inicializar banco de dados:', err);
+    logger.error('❌ Erro ao inicializar banco de dados:', err);
     process.exit(1);
   }
 })();
 
 // Tratamento de erros não capturados
-process.on('unhandledRejection', (err) => {
-  console.error('Erro não tratado:', err);
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('Promise rejeitada não tratada:', reason);
+  logger.error('Promise:', promise);
+  // Em produção, não encerrar o processo imediatamente
+  if (process.env.NODE_ENV === 'production') {
+    logger.error('Continuando execução em produção...');
+  }
 });
 
 process.on('uncaughtException', (err) => {
-  console.error('Exceção não capturada:', err);
-  process.exit(1);
+  logger.error('Exceção não capturada:', err);
+  logger.error('Stack:', err.stack);
+  // Encerrar processo apenas em produção para evitar estado inconsistente
+  if (process.env.NODE_ENV === 'production') {
+    process.exit(1);
+  }
 });
 
 module.exports = app;

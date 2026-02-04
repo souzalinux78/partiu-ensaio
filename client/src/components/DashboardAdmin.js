@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import api, { getBaseUrl } from '../utils/api';
 import AlterarSenha from './AlterarSenha';
 import EditarUsuario from './EditarUsuario';
+import ImageWithFallback from './ImageWithFallback';
 import './Dashboard.css';
 
 const formatIgrejas = (u) => {
@@ -33,6 +34,14 @@ const DashboardAdmin = ({ user, onLogout }) => {
       encarregadosRegionais: 0
     }
   });
+  const [kpis, setKpis] = useState({
+    totalEnsaiosMes: 0,
+    totalMusicosInteressados: 0,
+    ensaiosRealizados: 0,
+    taxaComparecimento: 0,
+    locaisMaisEnsaios: []
+  });
+  const [loadingKpis, setLoadingKpis] = useState(false);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(null);
   const [showAlterarSenha, setShowAlterarSenha] = useState(false);
@@ -65,7 +74,8 @@ const DashboardAdmin = ({ user, onLogout }) => {
           loadTodosEnsaios(),
           loadTodosPendentes(),
           loadTodosUsuarios(),
-          loadEstatisticas()
+          loadEstatisticas(),
+          loadKpis()
         ]);
       } catch (err) {
         console.error('Erro ao carregar dados iniciais:', err);
@@ -83,6 +93,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
       loadTodosPendentes();
       loadTodosUsuarios();
       loadEstatisticas();
+      loadKpis();
     }, 30000);
     
     return () => {
@@ -125,6 +136,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
       loadTodosEnsaios();
     } else if (activeTab === 'estatisticas') {
       loadEstatisticas();
+      loadKpis();
     } else if (activeTab === 'musicos') {
       loadMusicosPendentes();
     } else if (activeTab === 'encarregados') {
@@ -143,6 +155,7 @@ const DashboardAdmin = ({ user, onLogout }) => {
     loadTodosPendentes();
     if (activeTab === 'estatisticas') {
       loadEstatisticas();
+      loadKpis();
     }
   };
 
@@ -206,6 +219,35 @@ const DashboardAdmin = ({ user, onLogout }) => {
       setEstatisticas(response.data);
     } catch (err) {
       console.error('Erro ao carregar estatísticas:', err);
+    }
+  };
+
+  const loadKpis = async () => {
+    setLoadingKpis(true);
+    try {
+      const response = await api.get('/admin/kpis');
+      
+      // Validar se a resposta contém dados válidos
+      if (response && response.data) {
+        setKpis(response.data);
+      } else {
+        console.warn('[DashboardAdmin] Resposta de KPIs vazia ou inválida:', response);
+        // Manter valores padrão (já inicializados como 0)
+      }
+    } catch (err) {
+      console.error('[DashboardAdmin] Erro ao carregar KPIs:', err);
+      
+      // Verificar se é erro de autenticação
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        console.error('[DashboardAdmin] Erro de autenticação:', err.response?.status);
+        // O interceptor do api.js já trata redirecionamento
+        // Aqui apenas logamos para debug
+      } else {
+        // Para outros erros, manter valores padrão (0)
+        console.warn('[DashboardAdmin] Mantendo valores padrão de KPIs devido ao erro');
+      }
+    } finally {
+      setLoadingKpis(false);
     }
   };
 
@@ -313,17 +355,10 @@ const DashboardAdmin = ({ user, onLogout }) => {
     <div key={ensaio.id} className="ensaio-card">
       {ensaio.foto_local && (
         <div className="ensaio-image">
-          <img
-            src={`${getBaseUrl()}${ensaio.foto_local}`}
+          <ImageWithFallback
+            src={ensaio.foto_local}
             alt={ensaio.nome_igreja || ensaio.local || 'Local do ensaio'}
-            loading="lazy"
-            onError={(e) => {
-              console.error('Erro ao carregar imagem:', `${getBaseUrl()}${ensaio.foto_local}`);
-              e.target.style.display = 'none';
-            }}
-            onLoad={() => {
-              console.log('Imagem carregada com sucesso:', `${getBaseUrl()}${ensaio.foto_local}`);
-            }}
+            className="ensaio-img"
           />
         </div>
       )}
@@ -750,249 +785,140 @@ const DashboardAdmin = ({ user, onLogout }) => {
 
           {activeTab === 'estatisticas' && (
             <div>
-              {/* Seção de Usuários - Largura Total */}
-              <div className="stats-container" style={{ gridTemplateColumns: '1fr' }}>
-                <div className="stats-section">
-                  <h3>Usuários Cadastrados</h3>
-                  <p style={{ marginTop: '-10px', color: '#666' }}>
-                    Totais incluem pendentes (cadastros recentes).
-                  </p>
-                  <div className="stats-list">
-                    <div className="stat-item">
-                      <div className="stat-label">Músicos</div>
-                      <div className="stat-bar">
-                        <div
-                          className="stat-bar-fill"
-                          style={{ 
-                            width: '100%',
-                            background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #D4AF37 100%)'
-                          }}
-                        ></div>
-                      </div>
-                      <div className="stat-value">
-                        {estatisticas.usuarios?.totalMusicos || 0} músicos cadastrados
-                        {typeof estatisticas.usuarios?.musicosAprovados === 'number' && (
-                          <span style={{ display: 'block', fontSize: '0.9rem', color: '#555' }}>
-                            Aprovados: {estatisticas.usuarios.musicosAprovados} • Pendentes: {estatisticas.usuarios.musicosPendentes}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="stat-item">
-                      <div className="stat-label">Encarregados (Total)</div>
-                      <div className="stat-bar">
-                        <div
-                          className="stat-bar-fill"
-                          style={{ 
-                            width: '100%',
-                            background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 50%, #D4AF37 100%)'
-                          }}
-                        ></div>
-                      </div>
-                      <div className="stat-value">
-                        {estatisticas.usuarios?.totalEncarregados || 0} encarregados cadastrados
-                        {typeof estatisticas.usuarios?.encarregadosAprovados === 'number' && (
-                          <span style={{ display: 'block', fontSize: '0.9rem', color: '#555' }}>
-                            Aprovados: {estatisticas.usuarios.encarregadosAprovados} • Pendentes: {estatisticas.usuarios.encarregadosPendentes}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="stat-item">
-                      <div className="stat-label">Encarregados Locais</div>
-                      <div className="stat-bar">
-                        <div
-                          className="stat-bar-fill"
-                          style={{ 
-                            width: estatisticas.usuarios?.totalEncarregados > 0 
-                              ? `${(estatisticas.usuarios.encarregadosLocais / estatisticas.usuarios.totalEncarregados) * 100}%`
-                              : '0%',
-                            background: '#D4AF37'
-                          }}
-                        ></div>
-                      </div>
-                      <div className="stat-value">
-                        {estatisticas.usuarios?.encarregadosLocais || 0} encarregados locais
-                        {estatisticas.usuarios?.totalEncarregados > 0 && (
-                          <span style={{ color: '#666', marginLeft: '8px' }}>
-                            ({Math.round((estatisticas.usuarios.encarregadosLocais / estatisticas.usuarios.totalEncarregados) * 100)}%)
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="stat-item">
-                      <div className="stat-label">Encarregados Regionais</div>
-                      <div className="stat-bar">
-                        <div
-                          className="stat-bar-fill"
-                          style={{ 
-                            width: estatisticas.usuarios?.totalEncarregados > 0 
-                              ? `${(estatisticas.usuarios.encarregadosRegionais / estatisticas.usuarios.totalEncarregados) * 100}%`
-                              : '0%',
-                            background: '#1a1a1a'
-                          }}
-                        ></div>
-                      </div>
-                      <div className="stat-value">
-                        {estatisticas.usuarios?.encarregadosRegionais || 0} encarregados regionais
-                        {estatisticas.usuarios?.totalEncarregados > 0 && (
-                          <span style={{ color: '#666', marginLeft: '8px' }}>
-                            ({Math.round((estatisticas.usuarios.encarregadosRegionais / estatisticas.usuarios.totalEncarregados) * 100)}%)
-                          </span>
-                        )}
-                      </div>
-                    </div>
+              {/* KPIs Principais - Cards Grandes */}
+              <div className="kpis-main-grid">
+                {/* Comunidade Ativa */}
+                <div className="kpi-main-card kpi-primary">
+                  <div className="kpi-main-value">
+                    {loading ? '...' : (estatisticas.usuarios?.musicosAprovados || 0) + (estatisticas.usuarios?.encarregadosAprovados || 0)}
+                  </div>
+                  <div className="kpi-main-label">Comunidade Ativa</div>
+                  <div className="kpi-main-subtitle">
+                    {(estatisticas.usuarios?.musicosAprovados || 0)} músicos • {(estatisticas.usuarios?.encarregadosAprovados || 0)} encarregados
+                  </div>
+                </div>
+
+                {/* Ensaios Agendados */}
+                <div className="kpi-main-card kpi-highlight">
+                  <div className="kpi-main-value">
+                    {loadingKpis ? '...' : kpis.totalEnsaiosMes}
+                  </div>
+                  <div className="kpi-main-label">Ensaios Agendados</div>
+                  <div className="kpi-main-subtitle">
+                    Este mês
+                  </div>
+                </div>
+
+                {/* Receberão Lembrete */}
+                <div className="kpi-main-card kpi-success">
+                  <div className="kpi-main-value">
+                    {loadingKpis ? '...' : kpis.totalMusicosInteressados}
+                  </div>
+                  <div className="kpi-main-label">Receberão Lembrete</div>
+                  <div className="kpi-main-subtitle">
+                    Este mês via WhatsApp
+                  </div>
+                </div>
+
+                {/* Taxa de Engajamento */}
+                <div className="kpi-main-card kpi-info">
+                  <div className="kpi-main-value">
+                    {loadingKpis ? '...' : `${kpis.taxaComparecimento}%`}
+                  </div>
+                  <div className="kpi-main-label">Taxa de Engajamento</div>
+                  <div className="kpi-main-subtitle">
+                    {kpis.ensaiosRealizados > 0 
+                      ? `${kpis.ensaiosRealizados} ensaios com presença confirmada`
+                      : 'Aguardando ensaios realizados'}
                   </div>
                 </div>
               </div>
 
-              {/* Seção de Ensaios */}
-              <div className="stats-container" style={{ gridTemplateColumns: '1fr', marginTop: '20px' }}>
-                <div className="stats-section">
-                  <h3>Ensaios</h3>
-                  <div className="stats-list">
-                    <div className="stat-item">
-                      <div className="stat-label">Total</div>
-                      <div className="stat-bar">
-                        <div className="stat-bar-fill" style={{ width: '100%' }}></div>
+              {/* Locais Mais Ativos - Ranking Simples */}
+              {kpis.locaisMaisEnsaios && kpis.locaisMaisEnsaios.length > 0 && (
+                <div className="kpi-secondary-card">
+                  <h3 className="kpi-secondary-title">📍 Locais Mais Ativos</h3>
+                  <div className="kpi-ranking-list">
+                    {kpis.locaisMaisEnsaios.map((local, index) => (
+                      <div key={index} className="kpi-ranking-item">
+                        <span className="kpi-ranking-position">{index + 1}º</span>
+                        <span className="kpi-ranking-name">{local.local}</span>
+                        <span className="kpi-ranking-value">{local.total} ensaios</span>
                       </div>
-                      <div className="stat-value">{estatisticas.ensaios?.total || 0} ensaios cadastrados</div>
-                    </div>
-                    <div className="stat-item">
-                      <div className="stat-label">Aprovados</div>
-                      <div className="stat-bar">
-                        <div className="stat-bar-fill" style={{ width: '100%', background: '#D4AF37' }}></div>
-                      </div>
-                      <div className="stat-value">{estatisticas.ensaios?.aprovados || 0} ensaios aprovados</div>
-                    </div>
-                    <div className="stat-item">
-                      <div className="stat-label">Pendentes</div>
-                      <div className="stat-bar">
-                        <div className="stat-bar-fill" style={{ width: '100%', background: '#1a1a1a' }}></div>
-                      </div>
-                      <div className="stat-value">{estatisticas.ensaios?.pendentes || 0} ensaios pendentes</div>
-                    </div>
+                    ))}
                   </div>
                 </div>
-              </div>
+              )}
 
-              <div className="stats-container" style={{ marginTop: '30px' }}>
-                <div className="stats-section">
-                  <h3>Igrejas por Cidade</h3>
-                  {estatisticas.porCidade.length === 0 ? (
-                    <p className="empty-state">Nenhum dado disponível</p>
-                  ) : (
-                    <div className="stats-list">
-                      {estatisticas.porCidade.map((item, index) => (
-                        <div key={index} className="stat-item">
-                          <div className="stat-label">{item.cidade || 'Não informado'}</div>
-                          <div className="stat-bar">
-                            <div
-                              className="stat-bar-fill"
-                              style={{ width: `${item.porcentagem}%` }}
-                            ></div>
+              {/* Informações Secundárias - Grid 2 Colunas */}
+              <div className="kpi-secondary-grid">
+                {/* Dados Geográficos */}
+                <div className="kpi-secondary-card">
+                  <h3 className="kpi-secondary-title">🌍 Distribuição Geográfica</h3>
+                  
+                  {estatisticas.porCidade && estatisticas.porCidade.length > 0 && (
+                    <div className="kpi-secondary-section">
+                      <h4 className="kpi-secondary-subtitle">Por Cidade</h4>
+                      <div className="kpi-simple-list">
+                        {estatisticas.porCidade.slice(0, 5).map((item, index) => (
+                          <div key={index} className="kpi-simple-item">
+                            <span>{item.cidade || 'Não informado'}</span>
+                            <span className="kpi-simple-value">{item.total}</span>
                           </div>
-                          <div className="stat-value">
-                            {item.total} igrejas ({item.porcentagem}%)
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {estatisticas.porEstado && estatisticas.porEstado.length > 0 && (
+                    <div className="kpi-secondary-section" style={{ marginTop: '20px' }}>
+                      <h4 className="kpi-secondary-subtitle">Por Estado</h4>
+                      <div className="kpi-simple-list">
+                        {estatisticas.porEstado.slice(0, 5).map((item, index) => (
+                          <div key={index} className="kpi-simple-item">
+                            <span>{item.estado || 'Não informado'}</span>
+                            <span className="kpi-simple-value">{item.total}</span>
                           </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
 
-                <div className="stats-section">
-                  <h3>Igrejas por Estado</h3>
-                  {estatisticas.porEstado.length === 0 ? (
-                    <p className="empty-state">Nenhum dado disponível</p>
-                  ) : (
-                    <div className="stats-list">
-                      {estatisticas.porEstado.map((item, index) => (
-                        <div key={index} className="stat-item">
-                          <div className="stat-label">{item.estado || 'Não informado'}</div>
-                          <div className="stat-bar">
-                            <div
-                              className="stat-bar-fill"
-                              style={{ width: `${item.porcentagem}%` }}
-                            ></div>
+                {/* Instrumentos e Naipes - Informação Secundária */}
+                <div className="kpi-secondary-card">
+                  <h3 className="kpi-secondary-title">🎵 Instrumentos e Naipes</h3>
+                  
+                  {estatisticas.porNaipe && estatisticas.porNaipe.length > 0 && (
+                    <div className="kpi-secondary-section">
+                      <h4 className="kpi-secondary-subtitle">Por Naipe</h4>
+                      <div className="kpi-simple-list">
+                        {estatisticas.porNaipe.slice(0, 5).map((item, index) => (
+                          <div key={index} className="kpi-simple-item">
+                            <span>{item.naipe || 'Não informado'}</span>
+                            <span className="kpi-simple-value">{item.total}</span>
                           </div>
-                          <div className="stat-value">
-                            {item.total} igrejas ({item.porcentagem}%)
-                          </div>
-                        </div>
-                      ))}
+                        ))}
+                      </div>
                     </div>
                   )}
-                </div>
-              </div>
 
-              <div className="stats-container" style={{ marginTop: '30px' }}>
-                <div className="stats-section">
-                  <h3>Instrumentos por Naipes (Categorias)</h3>
-                  {estatisticas.porNaipe.length === 0 ? (
-                    <p className="empty-state">Nenhum dado disponível</p>
-                  ) : (
-                    <div className="stats-list">
-                      {estatisticas.porNaipe.map((item, index) => (
-                        <div key={index} className="stat-item">
-                          <div className="stat-label">{item.naipe || 'Não informado'}</div>
-                          <div className="stat-bar">
-                            <div
-                              className="stat-bar-fill"
-                              style={{ 
-                                width: `${item.porcentagem}%`,
-                                background: getNaipeColor(item.naipe)
-                              }}
-                            ></div>
+                  {estatisticas.porInstrumento && estatisticas.porInstrumento.length > 0 && (
+                    <div className="kpi-secondary-section" style={{ marginTop: '20px' }}>
+                      <h4 className="kpi-secondary-subtitle">Top Instrumentos</h4>
+                      <div className="kpi-simple-list" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                        {estatisticas.porInstrumento.slice(0, 8).map((item, index) => (
+                          <div key={index} className="kpi-simple-item">
+                            <span>{item.instrumento || 'Não informado'}</span>
+                            <span className="kpi-simple-value">{item.total}</span>
                           </div>
-                          <div className="stat-value">
-                            {item.total} instrumentos ({item.porcentagem}%)
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="stats-section">
-                  <h3>Instrumentos Mais Utilizados</h3>
-                  {estatisticas.porInstrumento.length === 0 ? (
-                    <p className="empty-state">Nenhum dado disponível</p>
-                  ) : (
-                    <div className="stats-list" style={{ maxHeight: '400px', overflowY: 'auto' }}>
-                      {estatisticas.porInstrumento.slice(0, 20).map((item, index) => (
-                        <div key={index} className="stat-item">
-                          <div className="stat-label">
-                            {item.instrumento || 'Não informado'}
-                            {item.categoria_instrumento && (
-                              <span style={{ fontSize: '0.85em', color: '#666', marginLeft: '8px' }}>
-                                ({item.categoria_instrumento})
-                              </span>
-                            )}
-                          </div>
-                          <div className="stat-bar">
-                            <div
-                              className="stat-bar-fill"
-                              style={{ 
-                                width: `${item.porcentagem}%`,
-                                background: getNaipeColor(item.categoria_instrumento)
-                              }}
-                            ></div>
-                          </div>
-                          <div className="stat-value">
-                            {item.total} ({item.porcentagem}%)
-                          </div>
-                        </div>
-                      ))}
-                      {estatisticas.porInstrumento.length > 20 && (
-                        <p style={{ textAlign: 'center', color: '#666', marginTop: '10px' }}>
-                          Mostrando os 20 mais utilizados de {estatisticas.porInstrumento.length} instrumentos
-                        </p>
-                      )}
+                        ))}
+                      </div>
                     </div>
                   )}
                 </div>
               </div>
+
             </div>
           )}
         </div>

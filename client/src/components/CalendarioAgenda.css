@@ -1,0 +1,697 @@
+/* Container para calendário standalone (não usado mais, mas mantido para compatibilidade) */
+.calendario-agenda-container {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  min-height: calc(100vh - 200px);
+}
+
+/* Container para calendário inline na página de agenda */
+.calendario-agenda-inline {
+  padding: 0;
+  margin: 20px 0;
+  width: 100%;
+}
+
+.calendario-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.calendario-header h1 {
+  color: #333;
+  font-size: 2.5rem;
+  margin-bottom: 10px;
+}
+
+.calendario-header p {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.calendario-loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  font-size: 1.2rem;
+  color: #666;
+}
+
+.calendario-legend {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.95rem;
+  color: #555;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: inline-block;
+}
+
+.calendario-wrapper {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Ajustes para calendário inline */
+.calendario-agenda-inline .calendario-wrapper {
+  margin: 0;
+}
+
+/* Estilos do FullCalendar */
+.fc {
+  font-family: inherit;
+}
+
+.fc-toolbar-title {
+  font-size: 1.75rem !important;
+  font-weight: 600;
+  color: #333;
+}
+
+.fc-button {
+  background-color: #4CAF50 !important;
+  border-color: #4CAF50 !important;
+  color: white !important;
+  padding: 8px 16px !important;
+  font-weight: 500 !important;
+  border-radius: 4px !important;
+  transition: background-color 0.3s ease;
+}
+
+.fc-button:hover {
+  background-color: #45a049 !important;
+  border-color: #45a049 !important;
+}
+
+.fc-button-active {
+  background-color: #2196F3 !important;
+  border-color: #2196F3 !important;
+}
+
+.fc-button-active:hover {
+  background-color: #1976D2 !important;
+  border-color: #1976D2 !important;
+}
+
+.fc-daygrid-day-number {
+  color: #333;
+  font-weight: 500;
+}
+
+.fc-day-today {
+  background-color: #f0f8ff !important;
+}
+
+.fc-event {
+  cursor: pointer;
+  border-radius: 6px;
+  padding: 4px 6px;
+  font-size: 0.8rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border: none;
+  font-weight: 500;
+}
+
+.fc-event:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10;
+}
+
+.fc-event-title {
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.fc-daygrid-event {
+  margin: 2px 0;
+}
+
+/* Modal */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 20px;
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.modal-content {
+  background: white;
+  border-radius: 12px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow: hidden;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+  animation: slideUp 0.3s ease;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Mobile: modal com scroll interno e altura ajustada */
+@media (max-width: 767px) {
+  .modal-content {
+    max-width: 95%;
+    max-height: 85vh;
+    margin: 10px;
+    border-radius: 12px;
+  }
+
+  .modal-body {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(50px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 24px;
+  border-bottom: 1px solid #f0f0f0; /* Borda mais suave */
+  background: linear-gradient(135deg, #fafafa 0%, #ffffff 100%); /* Fundo suave */
+}
+
+.modal-header-content {
+  flex: 1;
+}
+
+.modal-header h2 {
+  margin: 0 0 8px 0;
+  color: #1a202c; /* Preto suave */
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.3;
+}
+
+.modal-header-date {
+  margin: 0;
+  color: #2d3748; /* Cinza escuro */
+  font-size: 1rem;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #666;
+  cursor: pointer;
+  padding: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.modal-close:hover {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.modal-body {
+  padding: 24px;
+  line-height: 1.6;
+}
+
+.modal-foto {
+  margin-bottom: 24px;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.modal-foto img {
+  width: 100%;
+  height: auto;
+  max-height: 280px;
+  object-fit: cover;
+  display: block;
+}
+
+.modal-info {
+  display: flex;
+  flex-direction: column;
+  gap: 24px; /* Espaçamento maior entre seções */
+}
+
+/* Seções de informação com hierarquia */
+.info-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-section-highlight {
+  background: linear-gradient(135deg, #f7fafc 0%, #edf2f7 100%);
+  padding: 16px;
+  border-radius: 8px;
+  border-left: 4px solid #4CAF50; /* Borda verde para destaque */
+  margin-bottom: 4px;
+}
+
+.info-section-low {
+  padding-top: 16px;
+  border-top: 1px solid #f0f0f0;
+  margin-top: 8px;
+}
+
+.info-label {
+  color: #718096; /* Cinza médio */
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.info-value {
+  color: #2d3748; /* Cinza escuro */
+  font-size: 1rem;
+  line-height: 1.6;
+}
+
+.info-value-highlight {
+  color: #1a202c; /* Preto suave para máximo destaque */
+  font-size: 1.2rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.info-horario {
+  color: #4a5568; /* Cinza médio para horário */
+  font-weight: 600;
+  margin-left: 4px;
+}
+
+.info-location {
+  color: #718096;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+/* Badges/Chips para Tipo e Instrumento */
+.info-badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.tipo-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.tipo-badge.tipo-local {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+.tipo-badge.tipo-regional {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+/* Badge de Ensaio Geral */
+.ensaio-geral-badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 16px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background-color: #f3e5f5; /* Roxo claro */
+  color: #7b1fa2; /* Roxo escuro */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.categoria-instrumento {
+  color: #bf360c;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Link do Google Maps no modal */
+.modal-maps-link {
+  color: #3182ce; /* Azul */
+  text-decoration: none;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-radius: 6px;
+  background: rgba(49, 130, 206, 0.08);
+  transition: all 0.3s ease;
+  margin-top: 8px;
+  line-height: 1.5;
+}
+
+.modal-maps-link:hover {
+  background: rgba(49, 130, 206, 0.15);
+  color: #2c5282;
+  transform: translateX(2px);
+}
+
+.maps-icon {
+  font-size: 0.85rem;
+  margin-left: 4px;
+  opacity: 0.9;
+}
+
+/* Botão de Lembrete no Modal */
+.info-section-actions {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #f0f0f0;
+}
+
+.btn-lembrete {
+  width: 100%;
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: #1a1a1a;
+  border: none;
+  padding: 14px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 1rem;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+  position: relative;
+  overflow: hidden;
+}
+
+.btn-lembrete:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 215, 0, 0.4);
+  background: linear-gradient(135deg, #FFA500 0%, #FF8C00 100%);
+}
+
+.btn-lembrete:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.btn-lembrete:disabled {
+  opacity: 0.7;
+  cursor: wait;
+  transform: none;
+}
+
+.btn-lembrete.lembrete-ativo {
+  background: linear-gradient(135deg, #4CAF50 0%, #45a049 100%);
+  color: white;
+  box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+}
+
+.btn-lembrete.lembrete-ativo:hover {
+  background: linear-gradient(135deg, #45a049 0%, #388e3c 100%);
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
+}
+
+.lembrete-info {
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: #718096;
+  text-align: center;
+  font-style: italic;
+}
+
+/* Responsividade - Mobile First */
+@media (max-width: 767px) {
+  .calendario-agenda-container {
+    padding: 10px;
+  }
+
+  .calendario-header h1 {
+    font-size: 1.8rem;
+  }
+
+  .calendario-header p {
+    font-size: 0.95rem;
+  }
+
+  .calendario-agenda-inline {
+    padding: 0;
+    margin: 15px 0;
+  }
+
+  .calendario-wrapper {
+    padding: 5px;
+  }
+
+  .calendario-legend {
+    gap: 15px;
+    margin-bottom: 15px;
+    font-size: 0.85rem;
+  }
+
+  .fc-toolbar {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .fc-toolbar-title {
+    font-size: 1.3rem !important;
+  }
+
+  .fc-button {
+    padding: 6px 10px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .fc-button-group {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  /* Calendário em modo semana no mobile */
+  .fc-timeGridWeek-view {
+    font-size: 0.8rem;
+  }
+
+  .fc-event {
+    font-size: 0.7rem;
+    padding: 2px 4px;
+  }
+
+  .fc-header-toolbar {
+    flex-wrap: wrap;
+  }
+
+  .fc-header-toolbar .fc-toolbar-chunk {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+  }
+
+  .modal-content {
+    max-width: 95%;
+    margin: 10px;
+    max-height: 85vh;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .modal-header {
+    padding: 20px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .modal-header-content {
+    width: 100%;
+  }
+
+  .modal-header h2 {
+    font-size: 1.3rem;
+  }
+
+  .modal-header-date {
+    font-size: 0.95rem;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    font-size: 1.8rem;
+  }
+
+  .btn-lembrete {
+    font-size: 0.9rem;
+    padding: 12px 16px;
+  }
+
+  .modal-body {
+    padding: 16px;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    flex: 1;
+  }
+
+  .info-section-highlight {
+    padding: 14px;
+  }
+
+  .info-value-highlight {
+    font-size: 1.1rem;
+  }
+
+  .info-badges {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .btn-lembrete {
+    font-size: 0.9rem;
+    padding: 12px 16px;
+  }
+
+  .modal-header {
+    padding: 16px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .modal-header-content {
+    width: 100%;
+  }
+
+  .modal-close {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    font-size: 1.8rem;
+  }
+
+  .calendario-legend {
+    gap: 15px;
+    font-size: 0.85rem;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendario-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .fc-button {
+    padding: 5px 10px !important;
+    font-size: 0.75rem !important;
+  }
+
+  .fc-toolbar-title {
+    font-size: 1.1rem !important;
+  }
+
+  .fc-event-title {
+    font-size: 0.75rem;
+  }
+
+  .modal-header {
+    padding: 16px;
+  }
+
+  .modal-header h2 {
+    font-size: 1.2rem;
+  }
+
+  .modal-header-date {
+    font-size: 0.9rem;
+  }
+
+  .modal-body {
+    padding: 16px;
+  }
+
+  .info-section-highlight {
+    padding: 12px;
+  }
+
+  .info-value-highlight {
+    font-size: 1rem;
+  }
+
+  .modal-maps-link {
+    padding: 6px 10px;
+    font-size: 0.9rem;
+  }
+}
+
+/* Ajustes para melhor visualização em telas pequenas */
+@media (max-width: 640px) {
+  .fc-daygrid-day-frame {
+    min-height: 60px;
+  }
+
+  .fc-daygrid-event {
+    font-size: 0.7rem;
+    padding: 1px 2px;
+  }
+}
