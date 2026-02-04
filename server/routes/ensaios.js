@@ -256,7 +256,7 @@ router.get('/pendentes-confirmacao', async (req, res) => {
           ),
           INTERVAL ? MINUTE
         )
-      ORDER BY horario_raw ASC, u.name ASC
+      ORDER BY e.horario ASC, u.name ASC
     `;
 
     db.all(
